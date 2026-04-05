@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Veracious Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:          #0b0e13;
+      --bg2:         #10141c;
+      --bg3:         #161c28;
+      --border:      #1e2a3a;
+      --border-hi:   #2e4060;
+      --accent:      #00e5ff;
+      --accent2:     #00b4cc;
+      --accent-glow: rgba(0, 229, 255, 0.15);
+      --text:        #c8d8e8;
+      --text-dim:    #5a7090;
+      --text-muted:  #3a5070;
+      --online:      #00ff88;
+      --offline:     #ff3860;
+      --checking:    #ffcc00;
+      --tag-bg:      rgba(0, 229, 255, 0.07);
+      --tag-color:   #4db8cc;
+      --radius:      6px;
+      --font-mono:   'Share Tech Mono', monospace;
+      --font-ui:     'Exo 2', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 14px; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-ui);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0, 229, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 229, 255, 0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .scanline {
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 2px,
+        rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px
+      );
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    header {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px 40px 20px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(0,229,255,0.04) 0%, transparent 100%);
+    }
+
+    .header-left { display: flex; align-items: center; gap: 16px; }
+
+    .logo-mark {
+      font-size: 2.4rem;
+      color: var(--accent);
+      text-shadow: 0 0 20px var(--accent), 0 0 40px rgba(0,229,255,0.3);
+      line-height: 1;
+      animation: pulse 4s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { text-shadow: 0 0 20px var(--accent), 0 0 40px rgba(0,229,255,0.3); }
+      50%       { text-shadow: 0 0 30px var(--accent), 0 0 60px rgba(0,229,255,0.5); }
+    }
+
+    h1 {
+      font-family: var(--font-mono);
+      font-size: 1.8rem;
+      font-weight: 400;
+      letter-spacing: 0.25em;
+      color: var(--accent);
+      line-height: 1;
+      text-shadow: 0 0 12px rgba(0,229,255,0.4);
+    }
+
+    .subtitle {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-top: 4px;
+      font-family: var(--font-mono);
+    }
+
+    .header-right { display: flex; align-items: center; gap: 24px; }
+    .clock-block { text-align: right; }
+
+    .clock {
+      font-family: var(--font-mono);
+      font-size: 1.5rem;
+      color: var(--text);
+      letter-spacing: 0.1em;
+      line-height: 1;
+    }
+
+    .date {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      letter-spacing: 0.1em;
+      margin-top: 4px;
+    }
+
+    .status-summary { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+
+    .pill {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      padding: 3px 10px;
+      border-radius: 100px;
+      letter-spacing: 0.08em;
+    }
+
+    .pill-online  { background: rgba(0,255,136,0.1); color: var(--online);  border: 1px solid rgba(0,255,136,0.3); }
+    .pill-offline { background: rgba(255,56,96,0.1);  color: var(--offline); border: 1px solid rgba(255,56,96,0.3); }
+
+    main {
+      position: relative;
+      z-index: 1;
+      padding: 36px 40px 60px;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    .group { margin-bottom: 48px; animation: fadeUp 0.4s ease both; }
+    .group:nth-child(1) { animation-delay: 0.05s; }
+    .group:nth-child(2) { animation-delay: 0.10s; }
+    .group:nth-child(3) { animation-delay: 0.15s; }
+    .group:nth-child(4) { animation-delay: 0.20s; }
+    .group:nth-child(5) { animation-delay: 0.25s; }
+    .group:nth-child(6) { animation-delay: 0.30s; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .group-heading {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .group-icon { font-size: 1.1rem; color: var(--accent); }
+
+    .group-name {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 400;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 18px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      text-decoration: none;
+      color: inherit;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s, background 0.2s, transform 0.15s, box-shadow 0.2s;
+      cursor: pointer;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 40px; height: 2px;
+      background: var(--accent);
+      opacity: 0;
+      transition: opacity 0.2s, width 0.3s;
+    }
+
+    .card:hover {
+      background: var(--bg3);
+      border-color: var(--border-hi);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 20px var(--accent-glow);
+    }
+
+    .card:hover::before { opacity: 1; width: 60px; }
+
+    .card-header { display: flex; align-items: center; gap: 10px; }
+    .card-icon { font-size: 1.3rem; flex-shrink: 0; line-height: 1; }
+
+    .card-name {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text);
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      letter-spacing: 0.02em;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: var(--text-muted);
+      transition: background 0.3s;
+      margin-left: auto;
+    }
+
+    .status-dot.online   { background: var(--online);   box-shadow: 0 0 6px var(--online);  animation: blink 3s ease-in-out infinite; }
+    .status-dot.offline  { background: var(--offline);  box-shadow: 0 0 6px var(--offline); }
+    .status-dot.checking { background: var(--checking); animation: glow-pulse 1s linear infinite; }
+
+    @keyframes blink      { 0%,100%{opacity:1}50%{opacity:.5} }
+    @keyframes glow-pulse { 0%{box-shadow:0 0 4px var(--checking)}50%{box-shadow:0 0 10px var(--checking)}100%{box-shadow:0 0 4px var(--checking)} }
+
+    .card-desc { font-size: 0.78rem; color: var(--text-dim); line-height: 1.5; }
+
+    .card-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+
+    .tag {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      padding: 2px 8px;
+      background: var(--tag-bg);
+      color: var(--tag-color);
+      border-radius: 3px;
+      border: 1px solid rgba(0,229,255,0.1);
+      letter-spacing: 0.06em;
+    }
+
+    .card-stats {
+      display: flex;
+      gap: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+
+    .stat-item { display: flex; flex-direction: column; gap: 2px; min-width: 55px; }
+
+    .stat-value {
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      color: var(--accent);
+      line-height: 1;
+      transition: color 0.3s;
+    }
+
+    .stat-value.updating { color: var(--accent2); }
+
+    .stat-label {
+      font-size: 0.62rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    footer {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 16px;
+      color: var(--text-muted);
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
+      border-top: 1px solid var(--border);
+      letter-spacing: 0.06em;
+    }
+
+    footer code { color: var(--accent2); }
+
+    @media (max-width: 700px) {
+      header { flex-direction: column; align-items: flex-start; gap: 16px; padding: 20px 20px 16px; }
+      .header-right { width: 100%; justify-content: space-between; }
+      main { padding: 24px 20px 40px; }
+      .card-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <div class="scanline"></div>
+
+  <header>
+    <div class="header-left">
+      <div class="logo-mark">⬡</div>
+      <div>
+        <h1>VERACIOUS</h1>
+        <p class="subtitle">Home Network Dashboard</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="clock-block">
+        <div id="clock" class="clock">--:--:--</div>
+        <div id="date"  class="date">---</div>
+      </div>
+      <div class="status-summary">
+        <span class="pill pill-online"  id="summary-online">0 online</span>
+        <span class="pill pill-offline" id="summary-offline" style="display:none">0 offline</span>
+      </div>
+    </div>
+  </header>
+
+  <main id="groups-container"></main>
+
+  <footer>
+    Edit <code>config.py</code> for backend stats &bull; Edit <code>index.html</code> to add services &bull;
+    Fast stats every <span id="fast-interval">5</span>s &bull; Slow stats every <span id="slow-interval">60</span>s
+  </footer>
+
+  <script>
+  /* ============================================================
+     VERACIOUS DASHBOARD — CONFIG
+     ============================================================
+     STATS FIELDS explained:
+       key        : key from /stats/fast or /stats/slow API response
+       label      : text shown under the value
+       endpoint   : 'fast' (updates every 5s) or 'slow' (every 60s)
+       transform  : optional JS function to format the value
+                    e.g.  "v => v + ' MB/s'"
+  ============================================================ */
+  const CONFIG = {
+
+    // URL of the stats backend (change if running on a different machine)
+    statsBase: 'http://localhost:8889',
+
+    // How often to poll each endpoint (milliseconds)
+    fastInterval: 5000,
+    slowInterval: 60000,
+
+    // How often to re-check service online/offline status
+    statusInterval: 60000,
+
+    groups: [
+
+      /* ── Infrastructure ───────────────────────────────────── */
+      {
+        name: "Infrastructure",
+        icon: "⬡",
+        services: [
+          {
+            name:        "Pi-hole",
+            url:         "http://192.168.88.244:8080",
+            icon:        "🕳️",
+            description: "DNS ad blocker",
+            tags:        ["dns", "network"],
+            checkUrl:    "http://192.168.88.244:8080",
+            stats: [
+              { key: "pihole_blocked", label: "Blocked",    endpoint: "slow" },
+              { key: "pihole_percent", label: "Block rate", endpoint: "slow", transform: "v => v + '%'" },
+              { key: "pihole_gravity", label: "Blocklist",  endpoint: "slow", transform: "v => (v/1000).toFixed(0)+'k'" },
+            ],
+          },
+          {
+            name:        "Router Admin",
+            url:         "http://192.168.88.1",
+            icon:        "📡",
+            description: "MikroTik gateway",
+            tags:        ["network"],
+            checkUrl:    "http://192.168.88.1",
+            stats: [
+              { key: "mikrotik_up_mbps",   label: "↑ Upload",   endpoint: "fast", transform: "v => v + ' MB/s'" },
+              { key: "mikrotik_down_mbps", label: "↓ Download", endpoint: "fast", transform: "v => v + ' MB/s'" },
+              { key: "mikrotik_devices",   label: "Devices",    endpoint: "fast" },
+            ],
+          },
+          {
+            name:        "TP-Link WAP",
+            url:         "http://192.168.88.250/webpages/index.html#/login",
+            icon:        "🔗",
+            description: "WiFi access point",
+            tags:        ["network", "wifi"],
+            checkUrl:    "http://192.168.88.250",
+            stats: [
+              { key: "mikrotik_devices", label: "Total devices", endpoint: "fast" },
+            ],
+          },
+        ],
+      },
+
+      /* ── Media ────────────────────────────────────────────── */
+      {
+        name: "Media",
+        icon: "▶",
+        services: [
+          {
+            name:        "Plex",
+            url:         "https://plex.tv",
+            icon:        "🎬",
+            description: "Media server",
+            tags:        ["media"],
+            checkUrl:    "https://plex.tv",
+            // Uncomment when PLEX_ENABLED = True in config.py
+            // stats: [
+            //   { key: "plex_streams", label: "Streams", endpoint: "slow" },
+            // ],
+          },
+        ],
+      },
+
+      /* ── Smart Home ───────────────────────────────────────── */
+      {
+        name: "Smart Home",
+        icon: "🏠",
+        services: [
+          {
+            name:        "Home Assistant",
+            url:         "http://192.168.88.253:8123",
+            icon:        "🏡",
+            description: "Home automation hub",
+            tags:        ["smart home", "automation"],
+            checkUrl:    "http://192.168.88.253:8123",
+            // Uncomment when HA_ENABLED = True in config.py
+             stats: [
+               { key: "ha_entities",    label: "Entities",    endpoint: "slow" },
+               { key: "ha_automations", label: "Automations", endpoint: "slow" },
+             ],
+          },
+        ],
+      },
+
+      /* ── AI ───────────────────────────────────────────────── */
+      {
+        name: "AI",
+        icon: "🤖",
+        services: [
+          {
+            name:        "Local AI",
+            url:         "http://192.168.88.236:3000",
+            icon:        "🧠",
+            description: "Open WebUI",
+            tags:        ["ai"],
+            checkUrl:    "http://192.168.88.236:3000",
+            // Uncomment when OPENWEBUI_ENABLED = True in config.py
+            stats: [
+               { key: "openwebui_models", label: "Models", endpoint: "slow" },
+             ],
+          },
+        ],
+      },
+
+      /* ── ADD MORE GROUPS HERE ─────────────────────────────── */
+      /*
+      {
+        name: "Monitoring",
+        icon: "◈",
+        services: [
+          {
+            name:        "Portainer",
+            url:         "http://192.168.88.XX:9000",
+            icon:        "🐳",
+            description: "Docker container manager",
+            tags:        ["docker"],
+            checkUrl:    "http://192.168.88.XX:9000",
+            stats: [
+              { key: "portainer_running", label: "Running",    endpoint: "slow" },
+              { key: "portainer_total",   label: "Total",      endpoint: "slow" },
+            ],
+          },
+          {
+            name:        "Proxmox",
+            url:         "https://192.168.88.XX:8006",
+            icon:        "🖥️",
+            description: "Hypervisor",
+            tags:        ["vm"],
+            checkUrl:    "https://192.168.88.XX:8006",
+            stats: [
+              { key: "proxmox_cpu_pct", label: "CPU",  endpoint: "slow", transform: "v => v + '%'" },
+              { key: "proxmox_mem_pct", label: "RAM",  endpoint: "slow", transform: "v => v + '%'" },
+              { key: "proxmox_vms",     label: "VMs",  endpoint: "slow" },
+            ],
+          },
+          {
+            name:        "Grafana",
+            url:         "http://192.168.88.XX:3000",
+            icon:        "📊",
+            description: "Metrics & dashboards",
+            tags:        ["monitoring"],
+            checkUrl:    "http://192.168.88.XX:3000",
+            stats: [
+              { key: "grafana_dashboards", label: "Dashboards", endpoint: "slow" },
+            ],
+          },
+        ],
+      },
+      {
+        name: "Storage",
+        icon: "◻",
+        services: [
+          {
+            name:        "TrueNAS",
+            url:         "http://192.168.88.XX",
+            icon:        "🗄️",
+            description: "NAS / ZFS storage",
+            tags:        ["storage"],
+            checkUrl:    "http://192.168.88.XX",
+            stats: [
+              { key: "truenas_pools",   label: "Pools",   endpoint: "slow" },
+              { key: "truenas_healthy", label: "Healthy", endpoint: "slow" },
+              { key: "truenas_disks",   label: "Disks",   endpoint: "slow" },
+            ],
+          },
+        ],
+      },
+      */
+
+    ],
+  };
+
+  /* ============================================================
+     APP — no need to edit below this line
+  ============================================================ */
+
+  // ── Clock ──────────────────────────────────────────────────
+  function updateClock() {
+    const now = new Date();
+    document.getElementById("clock").textContent =
+      now.toLocaleTimeString("en-US", { hour12: false });
+    document.getElementById("date").textContent =
+      now.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  document.getElementById("fast-interval").textContent = CONFIG.fastInterval / 1000;
+  document.getElementById("slow-interval").textContent = CONFIG.slowInterval / 1000;
+
+  // ── Stat cache ─────────────────────────────────────────────
+  const _statCache = { fast: {}, slow: {} };
+
+  async function fetchStats(endpoint) {
+    try {
+      const res = await fetch(`${CONFIG.statsBase}/stats/${endpoint}`, {
+        cache: 'no-store',
+        signal: AbortSignal.timeout(4000)
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      _statCache[endpoint] = data;
+      refreshStatDisplays(endpoint);
+    } catch { /* stats backend unavailable */ }
+  }
+
+  // ── Stat display elements registry ─────────────────────────
+  // Map: endpoint -> [ {key, valEl, transform} ]
+  const _statRegistry = { fast: [], slow: [] };
+
+  function registerStat(endpoint, key, valEl, transform) {
+    _statRegistry[endpoint].push({ key, valEl, transform });
+  }
+
+  function refreshStatDisplays(endpoint) {
+    const cache = _statCache[endpoint];
+    for (const { key, valEl, transform } of _statRegistry[endpoint]) {
+      const raw = cache[key];
+      if (raw === undefined || raw === null) continue;
+      let val = raw;
+      if (transform) {
+        try { val = new Function('v', `return (${transform})(v)`)(raw); } catch {}
+      }
+      if (valEl.textContent !== String(val)) {
+        valEl.classList.add('updating');
+        valEl.textContent = val;
+        setTimeout(() => valEl.classList.remove('updating'), 300);
+      }
+    }
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────
+  function el(tag, cls, inner) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (inner !== undefined) e.innerHTML = inner;
+    return e;
+  }
+
+  // ── Status checking ─────────────────────────────────────────
+  async function checkStatus(service, dot) {
+    if (!service.checkUrl) { dot.style.display = "none"; return; }
+    dot.className = "status-dot checking";
+    try {
+      await fetch(service.checkUrl, {
+        mode: "no-cors", cache: "no-store",
+        signal: AbortSignal.timeout(5000)
+      });
+      dot.className = "status-dot online";
+      dot.title = "Online";
+    } catch {
+      dot.className = "status-dot offline";
+      dot.title = "Unreachable";
+    }
+    updateSummary();
+  }
+
+  function updateSummary() {
+    const online  = document.querySelectorAll(".status-dot.online").length;
+    const offline = document.querySelectorAll(".status-dot.offline").length;
+    document.getElementById("summary-online").textContent = `${online} online`;
+    const offEl = document.getElementById("summary-offline");
+    offEl.textContent   = `${offline} offline`;
+    offEl.style.display = offline > 0 ? "" : "none";
+  }
+
+  // ── Card builder ────────────────────────────────────────────
+  function buildCard(service) {
+    const card = el("a", "card");
+    card.href   = service.url;
+    card.target = "_blank";
+    card.rel    = "noopener noreferrer";
+
+    const header = el("div", "card-header");
+    const dot    = el("span", "status-dot");
+    header.append(
+      el("span", "card-icon", service.icon || "◈"),
+      el("span", "card-name", service.name),
+      dot
+    );
+    card.appendChild(header);
+
+    if (service.description) card.appendChild(el("p", "card-desc", service.description));
+
+    if (service.tags && service.tags.length) {
+      const tagsRow = el("div", "card-tags");
+      service.tags.forEach(t => tagsRow.appendChild(el("span", "tag", t)));
+      card.appendChild(tagsRow);
+    }
+
+    if (service.stats && service.stats.length) {
+      const statsRow = el("div", "card-stats");
+      service.stats.forEach(stat => {
+        const item  = el("div", "stat-item");
+        const valEl = el("div", "stat-value", "…");
+        const lblEl = el("div", "stat-label", stat.label);
+        item.append(valEl, lblEl);
+        statsRow.appendChild(item);
+        registerStat(stat.endpoint, stat.key, valEl, stat.transform);
+      });
+      card.appendChild(statsRow);
+    }
+
+    checkStatus(service, dot);
+    return { card, dot, service };
+  }
+
+  // ── Render ──────────────────────────────────────────────────
+  const allDots = [];
+  const container = document.getElementById("groups-container");
+
+  CONFIG.groups.forEach(group => {
+    const section = el("section", "group");
+    const heading = el("div", "group-heading");
+    if (group.icon) heading.appendChild(el("span", "group-icon", group.icon));
+    heading.appendChild(el("h2", "group-name", group.name));
+    section.appendChild(heading);
+
+    const grid = el("div", "card-grid");
+    group.services.forEach(service => {
+      const { card, dot } = buildCard(service);
+      grid.appendChild(card);
+      allDots.push({ dot, service });
+    });
+
+    section.appendChild(grid);
+    container.appendChild(section);
+  });
+
+  // ── Polling ─────────────────────────────────────────────────
+
+  // Initial fetch
+  fetchStats('fast');
+  fetchStats('slow');
+
+  // Fast stats: every 5 seconds
+  setInterval(() => fetchStats('fast'), CONFIG.fastInterval);
+
+  // Slow stats: every 60 seconds
+  setInterval(() => fetchStats('slow'), CONFIG.slowInterval);
+
+  // Status dots: every 60 seconds
+  setInterval(() => {
+    allDots.forEach(({ dot, service }) => checkStatus(service, dot));
+  }, CONFIG.statusInterval);
+
+  </script>
+</body>
+</html>
