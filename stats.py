@@ -10,7 +10,7 @@ import threading
 import requests
 import urllib3
 
-from flask import Flask
+from flask import Flask, request
 import config as cfg
 
 # Suppress SSL warnings for self-signed certs (common on local network devices)
@@ -70,39 +70,67 @@ def get_mikrotik_stats():
         _mikrotik_prev['time'] = now
 
         return {
-            'mikrotik_up_mbps':   round(max(tx_speed, 0), 2),
-            'mikrotik_down_mbps': round(max(rx_speed, 0), 2),
-            'mikrotik_devices':   len(active_leases),
+            'mikrotik_up_mbps':       round(max(tx_speed, 0), 2),
+            'mikrotik_down_mbps':     round(max(rx_speed, 0), 2),
+            'mikrotik_devices':       len(active_leases),
         }
     except Exception as e:
         return {'mikrotik_error': str(e)}
 
 
 # ─── Pi-hole v6 ───────────────────────────────────────────────────────────────
+# Persistent session: authenticate once, reuse the token, only re-auth if it
+# is rejected (401) or has expired. This avoids burning through API seats.
+
+_pihole_sid        = None
+_pihole_sid_expiry = 0   # Unix timestamp after which we must re-auth
+
+def _pihole_authenticate():
+    """Login and cache the session ID + its validity window."""
+    global _pihole_sid, _pihole_sid_expiry
+    auth = requests.post(
+        f'{cfg.PIHOLE_HOST}/api/auth',
+        json={'password': cfg.PIHOLE_PASS},
+        timeout=5
+    )
+    auth.raise_for_status()
+    body    = auth.json()
+    session = body.get('session', {})
+    sid     = session.get('sid')
+    if not sid:
+        raise RuntimeError(f'Pi-hole auth failed: {body}')
+    # Pi-hole v6 sessions last 5 minutes by default; refresh at 4 min to be safe
+    validity = session.get('validity', 300)
+    _pihole_sid        = sid
+    _pihole_sid_expiry = time.time() + min(validity, 240)
+    return sid
 
 def get_pihole_stats():
     if not cfg.PIHOLE_ENABLED:
         return {}
+    global _pihole_sid, _pihole_sid_expiry
     try:
-        auth = requests.post(
-            f'{cfg.PIHOLE_HOST}/api/auth',
-            json={'password': cfg.PIHOLE_PASS},
-            timeout=5
-        )
-        sid = auth.json()['session']['sid']
+        # Re-auth only if token is missing or about to expire
+        if not _pihole_sid or time.time() >= _pihole_sid_expiry:
+            _pihole_authenticate()
 
         res = requests.get(
             f'{cfg.PIHOLE_HOST}/api/stats/summary',
-            cookies={'sid': sid},
+            headers={'sid': _pihole_sid},
             timeout=5
         )
-        data = res.json()
 
-        requests.delete(
-            f'{cfg.PIHOLE_HOST}/api/auth',
-            cookies={'sid': sid},
-            timeout=5
-        )
+        # Token was rejected mid-cycle — re-auth once and retry
+        if res.status_code == 401:
+            _pihole_authenticate()
+            res = requests.get(
+                f'{cfg.PIHOLE_HOST}/api/stats/summary',
+                headers={'sid': _pihole_sid},
+                timeout=5
+            )
+
+        res.raise_for_status()
+        data = res.json()
 
         return {
             'pihole_blocked': data['queries']['blocked'],
@@ -111,8 +139,10 @@ def get_pihole_stats():
             'pihole_gravity': data['gravity']['domains_being_blocked'],
         }
     except Exception as e:
+        # Invalidate cached session so next poll tries a fresh login
+        _pihole_sid        = None
+        _pihole_sid_expiry = 0
         return {'pihole_error': str(e)}
-
 
 # ─── Proxmox ──────────────────────────────────────────────────────────────────
 
@@ -141,9 +171,9 @@ def get_proxmox_stats():
         running_vms = len([v for v in vms if v.get('status') == 'running'])
 
         return {
-            'proxmox_cpu_pct': round(data['cpu'] * 100, 1),
-            'proxmox_mem_pct': round(data['memory']['used'] / data['memory']['total'] * 100, 1),
-            'proxmox_vms':     running_vms,
+            'proxmox_cpu_pct':    round(data['cpu'] * 100, 1),
+            'proxmox_mem_pct':    round(data['memory']['used'] / data['memory']['total'] * 100, 1),
+            'proxmox_vms':        running_vms,
         }
     except Exception as e:
         return {'proxmox_error': str(e)}
@@ -172,74 +202,12 @@ def get_truenas_stats():
         disk_count = len(disk_res.json())
 
         return {
-            'truenas_pools':   len(pools),
-            'truenas_healthy': 'Yes' if healthy else 'No',
-            'truenas_disks':   disk_count,
+            'truenas_pools':    len(pools),
+            'truenas_healthy':  'Yes' if healthy else 'No',
+            'truenas_disks':    disk_count,
         }
     except Exception as e:
         return {'truenas_error': str(e)}
-
-
-# ─── Synology DSM ─────────────────────────────────────────────────────────────
-# Tested against DSM 7.x. Uses the SYNO.API.Auth + SYNO.FileStation.Info APIs.
-# No additional packages required — plain HTTP requests.
-
-def get_synology_stats():
-    if not cfg.SYNOLOGY_ENABLED:
-        return {}
-    try:
-        # Authenticate and get a session ID
-        auth = requests.get(
-            f'{cfg.SYNOLOGY_HOST}/webapi/auth.cgi',
-            params={
-                'api':     'SYNO.API.Auth',
-                'version': '3',
-                'method':  'login',
-                'account': cfg.SYNOLOGY_USER,
-                'passwd':  cfg.SYNOLOGY_PASS,
-                'session': 'dashboard',
-                'format':  'sid',
-            },
-            verify=False,
-            timeout=5
-        )
-        sid = auth.json()['data']['sid']
-
-        # Storage info
-        storage = requests.get(
-            f'{cfg.SYNOLOGY_HOST}/webapi/entry.cgi',
-            params={
-                'api':     'SYNO.Storage.CGI.Storage',
-                'version': '1',
-                'method':  'load_info',
-                '_sid':    sid,
-            },
-            verify=False,
-            timeout=5
-        ).json()
-
-        volumes   = storage.get('data', {}).get('volumes', [])
-        vol_count = len(volumes)
-        # Aggregate used/total across all volumes (bytes → GB)
-        total_gb = sum(v.get('size', {}).get('total', 0) for v in volumes) / 1024**3
-        used_gb  = sum(v.get('size', {}).get('used', 0)  for v in volumes) / 1024**3
-        used_pct = round(used_gb / total_gb * 100, 1) if total_gb > 0 else 0
-
-        # Logout
-        requests.get(
-            f'{cfg.SYNOLOGY_HOST}/webapi/auth.cgi',
-            params={'api': 'SYNO.API.Auth', 'version': '1', 'method': 'logout', '_sid': sid},
-            verify=False, timeout=5
-        )
-
-        return {
-            'synology_volumes':  vol_count,
-            'synology_used_pct': used_pct,
-            'synology_used_gb':  round(used_gb, 1),
-            'synology_total_gb': round(total_gb, 1),
-        }
-    except Exception as e:
-        return {'synology_error': str(e)}
 
 
 # ─── UniFi ────────────────────────────────────────────────────────────────────
@@ -290,269 +258,6 @@ def get_plex_stats():
         return {'plex_error': str(e)}
 
 
-# ─── Jellyfin ─────────────────────────────────────────────────────────────────
-# Uses the Jellyfin REST API. API key generated in Dashboard > API Keys.
-
-def get_jellyfin_stats():
-    if not cfg.JELLYFIN_ENABLED:
-        return {}
-    try:
-        headers = {'X-Emby-Token': cfg.JELLYFIN_API_KEY}
-
-        sessions = requests.get(
-            f'{cfg.JELLYFIN_HOST}/Sessions',
-            headers=headers,
-            timeout=5
-        ).json()
-        active_streams = len([s for s in sessions if s.get('NowPlayingItem')])
-
-        libraries = requests.get(
-            f'{cfg.JELLYFIN_HOST}/Library/VirtualFolders',
-            headers=headers,
-            timeout=5
-        ).json()
-
-        return {
-            'jellyfin_streams':   active_streams,
-            'jellyfin_libraries': len(libraries),
-        }
-    except Exception as e:
-        return {'jellyfin_error': str(e)}
-
-
-# ─── Emby ─────────────────────────────────────────────────────────────────────
-# Uses the Emby REST API. API key generated in Dashboard > Advanced > API Keys.
-
-def get_emby_stats():
-    if not cfg.EMBY_ENABLED:
-        return {}
-    try:
-        headers = {'X-Emby-Token': cfg.EMBY_API_KEY}
-
-        sessions = requests.get(
-            f'{cfg.EMBY_HOST}/Sessions',
-            headers=headers,
-            timeout=5
-        ).json()
-        active_streams = len([s for s in sessions if s.get('NowPlayingItem')])
-
-        libraries = requests.get(
-            f'{cfg.EMBY_HOST}/Library/VirtualFolders',
-            headers=headers,
-            timeout=5
-        ).json()
-
-        return {
-            'emby_streams':   active_streams,
-            'emby_libraries': len(libraries),
-        }
-    except Exception as e:
-        return {'emby_error': str(e)}
-
-
-# ─── Audiobookshelf ───────────────────────────────────────────────────────────
-# Uses the Audiobookshelf REST API. API token found in Settings > Users.
-
-def get_audiobookshelf_stats():
-    if not cfg.AUDIOBOOKSHELF_ENABLED:
-        return {}
-    try:
-        headers = {'Authorization': f'Bearer {cfg.AUDIOBOOKSHELF_TOKEN}'}
-
-        libraries = requests.get(
-            f'{cfg.AUDIOBOOKSHELF_HOST}/api/libraries',
-            headers=headers,
-            timeout=5
-        ).json().get('libraries', [])
-
-        sessions = requests.get(
-            f'{cfg.AUDIOBOOKSHELF_HOST}/api/users/online',
-            headers=headers,
-            timeout=5
-        ).json()
-        active = len(sessions.get('openSessions', []))
-
-        return {
-            'audiobookshelf_libraries': len(libraries),
-            'audiobookshelf_active':    active,
-        }
-    except Exception as e:
-        return {'audiobookshelf_error': str(e)}
-
-
-# ─── Navidrome ────────────────────────────────────────────────────────────────
-# Uses the Subsonic-compatible API built into Navidrome.
-# Credentials are your Navidrome username/password.
-
-def get_navidrome_stats():
-    if not cfg.NAVIDROME_ENABLED:
-        return {}
-    try:
-        import hashlib, secrets as _secrets
-        salt   = _secrets.token_hex(6)
-        token  = hashlib.md5(f'{cfg.NAVIDROME_PASS}{salt}'.encode()).hexdigest()
-
-        params = {
-            'u': cfg.NAVIDROME_USER, 't': token, 's': salt,
-            'v': '1.16.0', 'c': 'veracious', 'f': 'json'
-        }
-
-        artists = requests.get(
-            f'{cfg.NAVIDROME_HOST}/rest/getArtists',
-            params=params, timeout=5
-        ).json()
-        artist_count = len(
-            artists.get('subsonic-response', {})
-                   .get('artists', {})
-                   .get('index', [])
-        )
-
-        songs = requests.get(
-            f'{cfg.NAVIDROME_HOST}/rest/getRandomSongs',
-            params={**params, 'size': '1'}, timeout=5
-        ).json()
-        song_count = songs.get('subsonic-response', {}).get('randomSongs', {}).get('song', [])
-
-        playlists = requests.get(
-            f'{cfg.NAVIDROME_HOST}/rest/getPlaylists',
-            params=params, timeout=5
-        ).json().get('subsonic-response', {}).get('playlists', {}).get('playlist', [])
-
-        return {
-            'navidrome_artists':   artist_count,
-            'navidrome_playlists': len(playlists),
-        }
-    except Exception as e:
-        return {'navidrome_error': str(e)}
-
-
-# ─── Immich ───────────────────────────────────────────────────────────────────
-# Uses the Immich REST API. API key generated in Account Settings > API Keys.
-
-def get_immich_stats():
-    if not cfg.IMMICH_ENABLED:
-        return {}
-    try:
-        headers = {'x-api-key': cfg.IMMICH_API_KEY}
-
-        stats = requests.get(
-            f'{cfg.IMMICH_HOST}/api/server-info/statistics',
-            headers=headers,
-            timeout=5
-        ).json()
-
-        return {
-            'immich_photos': stats.get('photos', 0),
-            'immich_videos': stats.get('videos', 0),
-            'immich_usage_gb': round(stats.get('usage', 0) / 1024**3, 1),
-        }
-    except Exception as e:
-        return {'immich_error': str(e)}
-
-
-# ─── Nextcloud ────────────────────────────────────────────────────────────────
-# Uses the Nextcloud Server Info API (requires the serverinfo app, enabled by default).
-# AUTH: basic auth with admin credentials or an app password (recommended).
-
-def get_nextcloud_stats():
-    if not cfg.NEXTCLOUD_ENABLED:
-        return {}
-    try:
-        res = requests.get(
-            f'{cfg.NEXTCLOUD_HOST}/ocs/v2.php/apps/serverinfo/api/v1/info?format=json',
-            auth=(cfg.NEXTCLOUD_USER, cfg.NEXTCLOUD_PASS),
-            headers={'OCS-APIRequest': 'true'},
-            timeout=5
-        )
-        data = res.json()['ocs']['data']
-
-        return {
-            'nextcloud_users':   data['activeUsers']['last24hours'],
-            'nextcloud_files':   data['nextcloud']['storage']['num_files'],
-            'nextcloud_used_gb': round(data['nextcloud']['storage']['used'] / 1024**3, 1),
-        }
-    except Exception as e:
-        return {'nextcloud_error': str(e)}
-
-
-# ─── Vaultwarden ──────────────────────────────────────────────────────────────
-# Uses the Vaultwarden admin API. Requires ADMIN_TOKEN set in Vaultwarden config.
-# Only exposes user count — no sensitive vault data is accessed.
-
-def get_vaultwarden_stats():
-    if not cfg.VAULTWARDEN_ENABLED:
-        return {}
-    try:
-        res = requests.get(
-            f'{cfg.VAULTWARDEN_HOST}/admin/users/overview',
-            headers={'Authorization': f'Bearer {cfg.VAULTWARDEN_ADMIN_TOKEN}'},
-            timeout=5
-        )
-        users = res.json()
-        return {
-            'vaultwarden_users': len(users),
-        }
-    except Exception as e:
-        return {'vaultwarden_error': str(e)}
-
-
-# ─── BlueBubbles ──────────────────────────────────────────────────────────────
-# Uses the BlueBubbles REST API. Password is set in BlueBubbles Server settings.
-
-def get_bluebubbles_stats():
-    if not cfg.BLUEBUBBLES_ENABLED:
-        return {}
-    try:
-        params = {'password': cfg.BLUEBUBBLES_PASS}
-
-        info = requests.get(
-            f'{cfg.BLUEBUBBLES_HOST}/api/v1/server/info',
-            params=params, timeout=5
-        ).json().get('data', {})
-
-        chats = requests.get(
-            f'{cfg.BLUEBUBBLES_HOST}/api/v1/chat/count',
-            params=params, timeout=5
-        ).json().get('data', {})
-
-        return {
-            'bluebubbles_chats':   chats.get('total', 0),
-            'bluebubbles_version': info.get('server_version', '?'),
-        }
-    except Exception as e:
-        return {'bluebubbles_error': str(e)}
-
-
-# ─── Mealie ───────────────────────────────────────────────────────────────────
-# Uses the Mealie REST API. API token generated in User Settings > API Tokens.
-
-def get_mealie_stats():
-    if not cfg.MEALIE_ENABLED:
-        return {}
-    try:
-        headers = {'Authorization': f'Bearer {cfg.MEALIE_TOKEN}'}
-
-        recipes = requests.get(
-            f'{cfg.MEALIE_HOST}/api/recipes',
-            headers=headers,
-            params={'perPage': 1},
-            timeout=5
-        ).json()
-
-        meal_plans = requests.get(
-            f'{cfg.MEALIE_HOST}/api/groups/mealplans/today',
-            headers=headers,
-            timeout=5
-        ).json()
-
-        return {
-            'mealie_recipes':   recipes.get('total', 0),
-            'mealie_today':     len(meal_plans) if isinstance(meal_plans, list) else 0,
-        }
-    except Exception as e:
-        return {'mealie_error': str(e)}
-
-
 # ─── Home Assistant ───────────────────────────────────────────────────────────
 
 def get_ha_stats():
@@ -560,6 +265,11 @@ def get_ha_stats():
         return {}
     try:
         headers = {'Authorization': f'Bearer {cfg.HA_TOKEN}'}
+        res = requests.get(
+            f'{cfg.HA_HOST}/api/',
+            headers=headers,
+            timeout=5
+        )
         states = requests.get(
             f'{cfg.HA_HOST}/api/states',
             headers=headers,
@@ -567,11 +277,11 @@ def get_ha_stats():
         ).json()
 
         entity_count = len(states)
-        automations  = len([s for s in states if s['entity_id'].startswith('automation.')])
+        automations = len([s for s in states if s['entity_id'].startswith('automation.')])
 
         return {
-            'ha_entities':    entity_count,
-            'ha_automations': automations,
+            'ha_entities':     entity_count,
+            'ha_automations':  automations,
         }
     except Exception as e:
         return {'ha_error': str(e)}
@@ -594,8 +304,8 @@ def get_portainer_stats():
         total   = len(containers)
 
         return {
-            'portainer_running': running,
-            'portainer_total':   total,
+            'portainer_running':  running,
+            'portainer_total':    total,
         }
     except Exception as e:
         return {'portainer_error': str(e)}
@@ -657,6 +367,337 @@ def get_grafana_stats():
         return {'grafana_error': str(e)}
 
 
+# ─── AMP (CubeCoders) ────────────────────────────────────────────────────────
+
+def get_amp_stats():
+    if not getattr(cfg, 'AMP_ENABLED', False):
+        return {}
+    try:
+        base = cfg.AMP_HOST.rstrip('/')
+
+        # Authenticate — returns a sessionToken valid for the request lifetime
+        auth_res = requests.post(
+            f'{base}/API/Core/Login',
+            json={
+                'username':       cfg.AMP_USER,
+                'password':       cfg.AMP_PASS,
+                'token':          '',
+                'rememberMeToken': '',
+            },
+            timeout=8
+        )
+        auth_res.raise_for_status()
+        auth_data = auth_res.json()
+        session_id = auth_data.get('sessionID') or auth_data.get('SessionID', '')
+        if not session_id:
+            return {'amp_error': 'no sessionID in AMP login response'}
+
+        headers = {'Content-Type': 'application/json'}
+        payload_base = {'SESSIONID': session_id}
+
+        # Discover all instances
+        inst_res = requests.post(
+            f'{base}/API/ADSModule/GetInstances',
+            json=payload_base,
+            headers=headers,
+            timeout=8
+        )
+        inst_res.raise_for_status()
+        all_instances = []
+        for controller in inst_res.json():
+            all_instances.extend(controller.get('AvailableInstances', []))
+
+        filter_ids = getattr(cfg, 'AMP_INSTANCES', [])
+        if filter_ids:
+            all_instances = [i for i in all_instances if i.get('InstanceID') in filter_ids]
+
+        running      = 0
+        total_players = 0
+        total_cpu    = 0.0
+        total_ram    = 0.0
+        counted      = 0
+
+        for inst in all_instances:
+            if inst.get('Running'):
+                running += 1
+            # Pull per-instance status for player counts + resource usage
+            try:
+                status_res = requests.post(
+                    f'{base}/API/ADSModule/GetInstanceStatus',
+                    json={**payload_base, 'InstanceId': inst.get('InstanceID', '')},
+                    headers=headers,
+                    timeout=5
+                )
+                if status_res.ok:
+                    s = status_res.json()
+                    metrics = s.get('Metrics', {})
+                    players = metrics.get('Active Users', {})
+                    total_players += int(players.get('RawValue', 0))
+                    cpu = metrics.get('CPU Usage', {})
+                    ram = metrics.get('Memory Usage', {})
+                    total_cpu += float(cpu.get('Percent', 0))
+                    total_ram += float(ram.get('Percent', 0))
+                    counted += 1
+            except Exception:
+                pass
+
+        return {
+            'amp_instances_total':   len(all_instances),
+            'amp_instances_running': running,
+            'amp_players':           total_players,
+            'amp_cpu_pct':           round(total_cpu / counted, 1) if counted else 0,
+            'amp_ram_pct':           round(total_ram / counted, 1) if counted else 0,
+        }
+    except Exception as e:
+        return {'amp_error': str(e)}
+
+
+# ─── OctoPrint ────────────────────────────────────────────────────────────────
+
+def _octoprint_printer_stats(printer):
+    """Fetch stats for a single OctoPrint instance."""
+    host = printer['host'].rstrip('/')
+    key  = printer['key']
+    headers = {'X-Api-Key': key}
+
+    job_res   = requests.get(f'{host}/api/job',     headers=headers, timeout=5)
+    temp_res  = requests.get(f'{host}/api/printer', headers=headers, timeout=5)
+
+    job_res.raise_for_status()
+    job  = job_res.json()
+    prog = job.get('progress', {})
+    state = job.get('state', 'Unknown')
+    pct   = round(prog.get('completion') or 0, 1)
+
+    bed_actual = tool_actual = None
+    if temp_res.ok:
+        temps = temp_res.json().get('temperature', {})
+        bed_actual  = temps.get('bed',  {}).get('actual')
+        tool_actual = temps.get('tool0', {}).get('actual')
+
+    name = printer.get('name', host)
+    prefix = f"octoprint_{name.lower().replace(' ', '_')}"
+    result = {
+        f'{prefix}_state':    state,
+        f'{prefix}_progress': pct,
+    }
+    if bed_actual  is not None: result[f'{prefix}_bed_temp']     = round(bed_actual,  1)
+    if tool_actual is not None: result[f'{prefix}_hotend_temp']  = round(tool_actual, 1)
+    return result
+
+
+def get_octoprint_stats():
+    if not getattr(cfg, 'OCTOPRINT_ENABLED', False):
+        return {}
+    printers = getattr(cfg, 'OCTOPRINT_PRINTERS', [])
+    out = {}
+    printing_count = 0
+    for p in printers:
+        try:
+            stats = _octoprint_printer_stats(p)
+            out.update(stats)
+            name   = p.get('name', p['host'])
+            prefix = f"octoprint_{name.lower().replace(' ', '_')}"
+            if 'Printing' in str(stats.get(f'{prefix}_state', '')):
+                printing_count += 1
+        except Exception as e:
+            name   = p.get('name', p.get('host', 'unknown'))
+            prefix = f"octoprint_{name.lower().replace(' ', '_')}"
+            out[f'{prefix}_error'] = str(e)
+    out['octoprint_printing'] = printing_count
+    out['octoprint_total']    = len(printers)
+    return out
+
+
+# ─── Moonraker / Klipper ─────────────────────────────────────────────────────
+
+def _moonraker_printer_stats(printer):
+    """Fetch stats for a single Moonraker instance."""
+    host = printer['host'].rstrip('/')
+    headers = {}
+    if printer.get('key'):
+        headers['X-Api-Key'] = printer['key']
+
+    # Print stats + temperatures in one call via the objects query endpoint
+    objects = 'print_stats,display_status,extruder,heater_bed'
+    res = requests.get(
+        f'{host}/printer/objects/query?{objects}',
+        headers=headers,
+        timeout=5
+    )
+    res.raise_for_status()
+    obj = res.json().get('result', {}).get('status', {})
+
+    ps    = obj.get('print_stats', {})
+    ds    = obj.get('display_status', {})
+    ext   = obj.get('extruder', {})
+    bed   = obj.get('heater_bed', {})
+
+    state = ps.get('state', 'unknown')
+    pct   = round((ds.get('progress') or 0) * 100, 1)
+    ext_t = ext.get('temperature')
+    bed_t = bed.get('temperature')
+
+    name   = printer.get('name', host)
+    prefix = f"moonraker_{name.lower().replace(' ', '_')}"
+    result = {
+        f'{prefix}_state':    state,
+        f'{prefix}_progress': pct,
+    }
+    if ext_t is not None: result[f'{prefix}_extruder_temp'] = round(ext_t, 1)
+    if bed_t is not None: result[f'{prefix}_bed_temp']      = round(bed_t, 1)
+    return result
+
+
+def get_moonraker_stats():
+    if not getattr(cfg, 'MOONRAKER_ENABLED', False):
+        return {}
+    printers = getattr(cfg, 'MOONRAKER_PRINTERS', [])
+    out = {}
+    printing_count = 0
+    for p in printers:
+        try:
+            stats = _moonraker_printer_stats(p)
+            out.update(stats)
+            name   = p.get('name', p['host'])
+            prefix = f"moonraker_{name.lower().replace(' ', '_')}"
+            if str(stats.get(f'{prefix}_state', '')).lower() == 'printing':
+                printing_count += 1
+        except Exception as e:
+            name   = p.get('name', p.get('host', 'unknown'))
+            prefix = f"moonraker_{name.lower().replace(' ', '_')}"
+            out[f'{prefix}_error'] = str(e)
+    out['moonraker_printing'] = printing_count
+    out['moonraker_total']    = len(printers)
+    return out
+
+
+# ─── Bambu Lab (LAN MQTT) ─────────────────────────────────────────────────────
+# Uses paho-mqtt to subscribe to the printer's local MQTT topic for ~3 seconds
+# and reads the most recent status report.  No cloud account required.
+
+def _bambu_printer_stats(printer):
+    """Fetch a single Bambu printer's status via local MQTT."""
+    try:
+        import paho.mqtt.client as mqtt
+    except ImportError:
+        return {'bambu_error': 'paho-mqtt not installed — run: pip install paho-mqtt --break-system-packages'}
+
+    host        = printer['host']
+    serial      = printer['serial']
+    access_code = printer['access_code']
+    port        = printer.get('port', 1883)
+    name        = printer.get('name', serial)
+    prefix      = f"bambu_{name.lower().replace(' ', '_')}"
+
+    topic  = f'device/{serial}/report'
+    result = {}
+    event  = threading.Event()
+
+    def on_connect(client, userdata, flags, rc):
+        if rc == 0:
+            client.subscribe(topic)
+
+    def on_message(client, userdata, msg):
+        try:
+            payload = json.loads(msg.payload.decode())
+            print_data = payload.get('print', {})
+            if not print_data:
+                return
+            state    = print_data.get('gcode_state', 'unknown')
+            pct      = print_data.get('mc_percent', 0)
+            layer    = print_data.get('layer_num', None)
+            total_l  = print_data.get('total_layer_num', None)
+            result[f'{prefix}_state']    = state
+            result[f'{prefix}_progress'] = pct
+            if layer    is not None: result[f'{prefix}_layer']        = layer
+            if total_l  is not None: result[f'{prefix}_total_layers'] = total_l
+            event.set()
+        except Exception:
+            pass
+
+    client = mqtt.Client()
+    client.username_pw_set('bblp', access_code)
+    client.on_connect = on_connect
+    client.on_message = on_message
+
+    # Bambu uses TLS on port 8883; LAN mode uses plain 1883
+    client.connect(host, port, keepalive=10)
+    client.loop_start()
+    event.wait(timeout=6)
+    client.loop_stop()
+    client.disconnect()
+
+    if not result:
+        result[f'{prefix}_state'] = 'no_data'
+    return result
+
+
+def get_bambu_stats():
+    if not getattr(cfg, 'BAMBU_ENABLED', False):
+        return {}
+    printers = getattr(cfg, 'BAMBU_PRINTERS', [])
+    out = {}
+    printing_count = 0
+    for p in printers:
+        try:
+            stats = _bambu_printer_stats(p)
+            out.update(stats)
+            name   = p.get('name', p.get('serial', 'unknown'))
+            prefix = f"bambu_{name.lower().replace(' ', '_')}"
+            state  = str(stats.get(f'{prefix}_state', '')).lower()
+            if state in ('running', 'printing', 'prepare'):
+                printing_count += 1
+        except Exception as e:
+            name   = p.get('name', p.get('serial', 'unknown'))
+            prefix = f"bambu_{name.lower().replace(' ', '_')}"
+            out[f'{prefix}_error'] = str(e)
+    out['bambu_printing'] = printing_count
+    out['bambu_total']    = len(printers)
+    return out
+
+
+# ─── Obico (The Spaghetti Detective) ─────────────────────────────────────────
+
+def get_obico_stats():
+    if not getattr(cfg, 'OBICO_ENABLED', False):
+        return {}
+    try:
+        headers = {'Authorization': f'Token {cfg.OBICO_API_KEY}'}
+        host    = cfg.OBICO_HOST.rstrip('/')
+
+        res = requests.get(
+            f'{host}/api/v1/printer/',
+            headers=headers,
+            timeout=8
+        )
+        res.raise_for_status()
+        printers = res.json()
+
+        total   = len(printers)
+        active  = 0
+        out = {'obico_total': total}
+
+        for p in printers:
+            name   = p.get('name', f"printer_{p.get('id', '?')}")
+            prefix = f"obico_{name.lower().replace(' ', '_')}"
+            status = (p.get('print', {}) or {})
+            state  = (p.get('status', {}) or {}).get('state', {})
+            state_text = state.get('text', 'Unknown') if isinstance(state, dict) else str(state)
+            pct    = (p.get('print', {}) or {}).get('progress', 0) or 0
+
+            out[f'{prefix}_state']    = state_text
+            out[f'{prefix}_progress'] = round(float(pct), 1)
+
+            if state_text.lower() in ('printing', 'paused'):
+                active += 1
+
+        out['obico_active'] = active
+        return out
+    except Exception as e:
+        return {'obico_error': str(e)}
+
+
 # ─── Cache updater threads ────────────────────────────────────────────────────
 
 def update_fast_cache():
@@ -677,23 +718,20 @@ def update_slow_cache():
         data.update(get_pihole_stats())
         data.update(get_proxmox_stats())
         data.update(get_truenas_stats())
-        data.update(get_synology_stats())
         data.update(get_unifi_stats())
         data.update(get_plex_stats())
-        data.update(get_jellyfin_stats())
-        data.update(get_emby_stats())
-        data.update(get_audiobookshelf_stats())
-        data.update(get_navidrome_stats())
-        data.update(get_immich_stats())
-        data.update(get_nextcloud_stats())
-        data.update(get_vaultwarden_stats())
-        data.update(get_bluebubbles_stats())
-        data.update(get_mealie_stats())
         data.update(get_ha_stats())
         data.update(get_portainer_stats())
         data.update(get_ollama_stats())
         data.update(get_openwebui_stats())
         data.update(get_grafana_stats())
+        # Game servers
+        data.update(get_amp_stats())
+        # 3D printers
+        data.update(get_octoprint_stats())
+        data.update(get_moonraker_stats())
+        data.update(get_bambu_stats())
+        data.update(get_obico_stats())
         with _cache_lock:
             _slow_cache['data'] = data
             _slow_cache['time'] = time.time()
@@ -750,17 +788,69 @@ def health():
     )
 
 
-# ─── Startup ──────────────────────────────────────────────────────────────────
+# ─── Home Assistant Proxy ─────────────────────────────────────────────────────
+# Proxies HA API calls from the browser through the backend to avoid CORS.
 
-_all_slow_fns = [
-    get_pihole_stats, get_proxmox_stats, get_truenas_stats,
-    get_synology_stats, get_unifi_stats, get_plex_stats,
-    get_jellyfin_stats, get_emby_stats, get_audiobookshelf_stats,
-    get_navidrome_stats, get_immich_stats, get_nextcloud_stats,
-    get_vaultwarden_stats, get_bluebubbles_stats, get_mealie_stats,
-    get_ha_stats, get_portainer_stats, get_ollama_stats,
-    get_openwebui_stats, get_grafana_stats,
-]
+@app.route('/ha/states')
+def ha_states():
+    try:
+        res = requests.get(
+            f'{cfg.HA_HOST}/api/states',
+            headers={'Authorization': f'Bearer {cfg.HA_TOKEN}'},
+            timeout=8
+        )
+        response = app.response_class(
+            response=res.text,
+            status=res.status_code,
+            mimetype='application/json'
+        )
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response
+    except Exception as e:
+        return app.response_class(
+            response=json.dumps({'error': str(e)}),
+            status=500,
+            mimetype='application/json',
+            headers={'Access-Control-Allow-Origin': '*'}
+        )
+
+
+@app.route('/ha/toggle', methods=['POST', 'OPTIONS'])
+def ha_toggle():
+    if request.method == 'OPTIONS':
+        r = app.response_class(status=204)
+        r.headers['Access-Control-Allow-Origin']  = '*'
+        r.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+        r.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        return r
+    try:
+        body      = request.get_json()
+        entity_id = body.get('entity_id', '')
+        res = requests.post(
+            f'{cfg.HA_HOST}/api/services/homeassistant/toggle',
+            headers={
+                'Authorization': f'Bearer {cfg.HA_TOKEN}',
+                'Content-Type':  'application/json',
+            },
+            json={'entity_id': entity_id},
+            timeout=8
+        )
+        response = app.response_class(
+            response=res.text,
+            status=res.status_code,
+            mimetype='application/json'
+        )
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response
+    except Exception as e:
+        return app.response_class(
+            response=json.dumps({'error': str(e)}),
+            status=500,
+            mimetype='application/json',
+            headers={'Access-Control-Allow-Origin': '*'}
+        )
+
+# ─── Startup ──────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
     # Prime both caches before starting the server
@@ -772,7 +862,14 @@ if __name__ == '__main__':
 
     print('[veracious] Priming slow cache...')
     slow_data = {}
-    for fn in _all_slow_fns:
+    for fn in [get_pihole_stats, get_proxmox_stats, get_truenas_stats,
+               get_unifi_stats, get_plex_stats, get_ha_stats,
+               get_portainer_stats, get_ollama_stats, get_openwebui_stats,
+               get_grafana_stats,
+               # Game servers
+               get_amp_stats,
+               # 3D printers
+               get_octoprint_stats, get_moonraker_stats, get_bambu_stats, get_obico_stats]:
         slow_data.update(fn())
     with _cache_lock:
         _slow_cache['data'] = slow_data

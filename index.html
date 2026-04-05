@@ -316,6 +316,318 @@
       main { padding: 24px 20px 40px; }
       .card-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
     }
+
+    /* ── HA Toggle button (lives inside the normal card) ─────── */
+
+    .ha-toggle-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 2px;
+      padding: 6px 10px;
+      background: rgba(0,229,255,0.06);
+      border: 1px solid rgba(0,229,255,0.15);
+      border-radius: 4px;
+      color: var(--accent2);
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+      width: 100%;
+      text-align: left;
+    }
+
+    .ha-toggle-btn:hover {
+      background: rgba(0,229,255,0.12);
+      border-color: rgba(0,229,255,0.35);
+      color: var(--accent);
+    }
+
+    .ha-toggle-btn.open {
+      background: rgba(0,229,255,0.12);
+      border-color: rgba(0,229,255,0.4);
+      color: var(--accent);
+    }
+
+    .ha-toggle-arrow {
+      display: inline-block;
+      transition: transform 0.25s;
+      font-style: normal;
+      margin-left: auto;
+    }
+
+    .ha-toggle-btn.open .ha-toggle-arrow { transform: rotate(180deg); }
+
+    /* ── Backdrop ─────────────────────────────────────────────── */
+
+    .ha-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 100;
+      backdrop-filter: blur(2px);
+      animation: fadeInBack 0.2s ease;
+    }
+
+    .ha-backdrop.open { display: block; }
+
+    @keyframes fadeInBack {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    /* ── Flyout Drawer ────────────────────────────────────────── */
+
+    .ha-drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      height: 100vh;
+      width: 420px;
+      max-width: 92vw;
+      background: var(--bg2);
+      border-left: 1px solid var(--border-hi);
+      z-index: 101;
+      display: flex;
+      flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: -8px 0 40px rgba(0,0,0,0.5), -1px 0 0 rgba(0,229,255,0.08);
+    }
+
+    .ha-drawer.open {
+      transform: translateX(0);
+    }
+
+    /* Drawer header bar */
+    .ha-drawer-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 18px 20px 16px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(0,229,255,0.04) 0%, transparent 100%);
+      flex-shrink: 0;
+    }
+
+    .ha-drawer-icon { font-size: 1.2rem; }
+
+    .ha-drawer-title {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      flex: 1;
+    }
+
+    .ha-drawer-close {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      font-size: 1rem;
+      width: 28px;
+      height: 28px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.2s, color 0.2s, background 0.2s;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+
+    .ha-drawer-close:hover {
+      border-color: var(--border-hi);
+      color: var(--text);
+      background: var(--bg3);
+    }
+
+    /* Scrollable content area */
+    .ha-drawer-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px 20px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-hi) transparent;
+    }
+
+    .ha-drawer-body::-webkit-scrollbar { width: 4px; }
+    .ha-drawer-body::-webkit-scrollbar-track { background: transparent; }
+    .ha-drawer-body::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 2px; }
+
+    /* Loading / error states */
+    .ha-controls-loading {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      padding: 24px 0;
+      text-align: center;
+    }
+
+    .ha-controls-error {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--offline);
+      padding: 16px 0;
+      text-align: center;
+    }
+
+    /* Domain section header */
+    .ha-domain-heading {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 20px 0 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .ha-domain-heading:first-child { margin-top: 0; }
+
+    .ha-domain-icon { font-size: 0.9rem; }
+
+    .ha-domain-label {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .ha-domain-count {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      color: var(--text-muted);
+      margin-left: auto;
+      opacity: 0.6;
+    }
+
+    /* Entity grid — two columns in the wide drawer */
+    .ha-entity-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+    }
+
+    .ha-entity-btn {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 10px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+      font-family: var(--font-ui);
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      text-align: left;
+      overflow: hidden;
+    }
+
+    .ha-entity-btn:hover {
+      background: #1a2234;
+      border-color: var(--border-hi);
+      color: var(--text);
+    }
+
+    .ha-entity-btn.on {
+      background: rgba(0,229,255,0.07);
+      border-color: rgba(0,229,255,0.3);
+      color: var(--accent);
+      box-shadow: 0 0 10px rgba(0,229,255,0.08);
+    }
+
+    .ha-entity-btn.on:hover {
+      background: rgba(0,229,255,0.12);
+      border-color: rgba(0,229,255,0.5);
+    }
+
+    .ha-entity-btn.unavailable {
+      opacity: 0.38;
+      cursor: not-allowed;
+    }
+
+    .ha-entity-btn.busy {
+      opacity: 0.6;
+      cursor: wait;
+      pointer-events: none;
+    }
+
+    .ha-entity-indicator {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: var(--text-muted);
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+
+    .ha-entity-btn.on .ha-entity-indicator {
+      background: var(--accent);
+      box-shadow: 0 0 5px var(--accent);
+    }
+
+    .ha-entity-btn.unavailable .ha-entity-indicator { background: var(--offline); }
+
+    .ha-entity-name {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 0.73rem;
+    }
+
+    .ha-entity-value {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    .ha-entity-btn.on .ha-entity-value { color: var(--accent2); }
+
+    /* Drawer footer */
+    .ha-drawer-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .ha-last-updated {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      color: var(--text-muted);
+    }
+
+    .ha-refresh-btn {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--accent2);
+      background: none;
+      border: none;
+      cursor: pointer;
+      letter-spacing: 0.06em;
+      padding: 4px 8px;
+      border-radius: 3px;
+      transition: color 0.2s, background 0.2s;
+    }
+
+    .ha-refresh-btn:hover {
+      color: var(--accent);
+      background: rgba(0,229,255,0.07);
+    }
+
   </style>
 </head>
 <body>
@@ -341,6 +653,21 @@
     </div>
   </header>
 
+  <!-- HA Controls Flyout -->
+  <div class="ha-backdrop" id="ha-backdrop"></div>
+  <div class="ha-drawer"   id="ha-drawer">
+    <div class="ha-drawer-header">
+      <span class="ha-drawer-icon">🏡</span>
+      <span class="ha-drawer-title">Device Controls</span>
+      <button class="ha-drawer-close" id="ha-drawer-close" title="Close">✕</button>
+    </div>
+    <div class="ha-drawer-body" id="ha-drawer-body"></div>
+    <div class="ha-drawer-footer">
+      <span class="ha-last-updated" id="ha-last-updated"></span>
+      <button class="ha-refresh-btn" id="ha-refresh-btn">↻ Refresh</button>
+    </div>
+  </div>
+
   <main id="groups-container"></main>
 
   <footer>
@@ -358,6 +685,10 @@
        endpoint   : 'fast' (updates every 5s) or 'slow' (every 60s)
        transform  : optional JS function to format the value
                     e.g.  "v => v + ' MB/s'"
+
+     HOME ASSISTANT CONTROLS:
+       Add  haControls: true  to any service entry to enable the
+       inline device control panel. Also set haUrl and haToken.
   ============================================================ */
   const CONFIG = {
 
@@ -365,11 +696,27 @@
     statsBase: 'http://localhost:8889',
 
     // How often to poll each endpoint (milliseconds)
-    fastInterval: 5000,
-    slowInterval: 60000,
-
-    // How often to re-check service online/offline status
+    fastInterval:   5000,
+    slowInterval:   60000,
     statusInterval: 60000,
+
+    // ── Home Assistant Controls ──────────────────────────────
+    // Set these to enable the inline device control panel on
+    // any card that has  haControls: true
+    haUrl:   'http://192.168.88.253:8123',
+    haToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiIxNTJkMmU5YmU0YTA0YWQ5Yjc0ZDc5ODVkMjBlNjQyMCIsImlhdCI6MTc3NTQwODY3NiwiZXhwIjoyMDkwNzY4Njc2fQ.Gzpk2ooqahCpCvbiBAkniJBQQX-KPJw1a2Z8Ltf5Muw',
+
+    // Which entity domains to show in the controls panel.
+    // Remove any you don't want to appear.
+    haDomainsConfig: [
+      { domain: 'light',        label: 'Lights',      icon: '💡', showValue: false },
+      { domain: 'switch',       label: 'Switches',     icon: '🔌', showValue: false },
+      { domain: 'input_boolean',label: 'Toggles',      icon: '🔘', showValue: false },
+      { domain: 'climate',      label: 'Climate',      icon: '🌡️', showValue: true  },
+      { domain: 'media_player', label: 'Media',        icon: '📺', showValue: true  },
+      { domain: 'fan',          label: 'Fans',         icon: '🌀', showValue: false },
+      { domain: 'cover',        label: 'Covers',       icon: '🪟', showValue: false },
+    ],
 
     groups: [
 
@@ -430,7 +777,6 @@
             description: "Media server",
             tags:        ["media"],
             checkUrl:    "https://plex.tv",
-            // Uncomment when PLEX_ENABLED = True in config.py
             // stats: [
             //   { key: "plex_streams", label: "Streams", endpoint: "slow" },
             // ],
@@ -450,11 +796,11 @@
             description: "Home automation hub",
             tags:        ["smart home", "automation"],
             checkUrl:    "http://192.168.88.253:8123",
-            // Uncomment when HA_ENABLED = True in config.py
-             stats: [
-               { key: "ha_entities",    label: "Entities",    endpoint: "slow" },
-               { key: "ha_automations", label: "Automations", endpoint: "slow" },
-             ],
+            stats: [
+              { key: "ha_entities",    label: "Entities",    endpoint: "slow" },
+              { key: "ha_automations", label: "Automations", endpoint: "slow" },
+            ],
+            haControls: true,   // ← enables the inline device control panel
           },
         ],
       },
@@ -471,10 +817,9 @@
             description: "Open WebUI",
             tags:        ["ai"],
             checkUrl:    "http://192.168.88.236:3000",
-            // Uncomment when OPENWEBUI_ENABLED = True in config.py
             stats: [
-               { key: "openwebui_models", label: "Models", endpoint: "slow" },
-             ],
+              { key: "openwebui_models", label: "Models", endpoint: "slow" },
+            ],
           },
         ],
       },
@@ -493,8 +838,8 @@
             tags:        ["docker"],
             checkUrl:    "http://192.168.88.XX:9000",
             stats: [
-              { key: "portainer_running", label: "Running",    endpoint: "slow" },
-              { key: "portainer_total",   label: "Total",      endpoint: "slow" },
+              { key: "portainer_running", label: "Running", endpoint: "slow" },
+              { key: "portainer_total",   label: "Total",   endpoint: "slow" },
             ],
           },
           {
@@ -505,20 +850,9 @@
             tags:        ["vm"],
             checkUrl:    "https://192.168.88.XX:8006",
             stats: [
-              { key: "proxmox_cpu_pct", label: "CPU",  endpoint: "slow", transform: "v => v + '%'" },
-              { key: "proxmox_mem_pct", label: "RAM",  endpoint: "slow", transform: "v => v + '%'" },
-              { key: "proxmox_vms",     label: "VMs",  endpoint: "slow" },
-            ],
-          },
-          {
-            name:        "Grafana",
-            url:         "http://192.168.88.XX:3000",
-            icon:        "📊",
-            description: "Metrics & dashboards",
-            tags:        ["monitoring"],
-            checkUrl:    "http://192.168.88.XX:3000",
-            stats: [
-              { key: "grafana_dashboards", label: "Dashboards", endpoint: "slow" },
+              { key: "proxmox_cpu_pct", label: "CPU", endpoint: "slow", transform: "v => v + '%'" },
+              { key: "proxmox_mem_pct", label: "RAM", endpoint: "slow", transform: "v => v + '%'" },
+              { key: "proxmox_vms",     label: "VMs", endpoint: "slow" },
             ],
           },
         ],
@@ -582,7 +916,6 @@
   }
 
   // ── Stat display elements registry ─────────────────────────
-  // Map: endpoint -> [ {key, valEl, transform} ]
   const _statRegistry = { fast: [], slow: [] };
 
   function registerStat(endpoint, key, valEl, transform) {
@@ -614,6 +947,13 @@
     return e;
   }
 
+  function friendlyName(entity_id) {
+    return entity_id
+      .split('.')[1]
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase());
+  }
+
   // ── Status checking ─────────────────────────────────────────
   async function checkStatus(service, dot) {
     if (!service.checkUrl) { dot.style.display = "none"; return; }
@@ -641,8 +981,183 @@
     offEl.style.display = offline > 0 ? "" : "none";
   }
 
+  // ── Home Assistant Controls ─────────────────────────────────
+
+  const HA_HEADERS = {
+    'Authorization': `Bearer ${CONFIG.haToken}`,
+    'Content-Type': 'application/json',
+  };
+
+  const HA_TOGGLEABLE = new Set([
+    'light', 'switch', 'input_boolean', 'fan', 'media_player', 'cover'
+  ]);
+
+  function haEntityValue(state) {
+    const domain = state.entity_id.split('.')[0];
+    if (domain === 'climate') {
+      const temp   = state.attributes.current_temperature;
+      const target = state.attributes.temperature;
+      return temp != null ? `${temp}°` : (target != null ? `→${target}°` : state.state);
+    }
+    if (domain === 'media_player') {
+      return state.state !== 'off' && state.state !== 'unavailable'
+        ? (state.attributes.media_title || state.state) : '';
+    }
+    return '';
+  }
+
+  function haIsOn(state) {
+    const s = state.state;
+    return s === 'on' || s === 'playing' || s === 'paused' ||
+           s === 'heat' || s === 'cool' || s === 'auto' || s === 'heat_cool';
+  }
+
+  async function haFetchStates() {
+    const res = await fetch(`${CONFIG.haUrl}/api/states`, {
+      headers: HA_HEADERS,
+      signal: AbortSignal.timeout(6000)
+    });
+    if (!res.ok) throw new Error(`HA returned ${res.status}`);
+    return res.json();
+  }
+
+  async function haToggleEntity(entityId) {
+    await fetch(`${CONFIG.haUrl}/api/services/homeassistant/toggle`, {
+      method: 'POST',
+      headers: HA_HEADERS,
+      body: JSON.stringify({ entity_id: entityId }),
+      signal: AbortSignal.timeout(5000)
+    });
+  }
+
+  // ── Drawer state ────────────────────────────────────────────
+  const _drawer      = document.getElementById('ha-drawer');
+  const _backdrop    = document.getElementById('ha-backdrop');
+  const _drawerBody  = document.getElementById('ha-drawer-body');
+  const _lastUpdated = document.getElementById('ha-last-updated');
+  const _refreshBtn  = document.getElementById('ha-refresh-btn');
+  const _closeBtn    = document.getElementById('ha-drawer-close');
+
+  let _drawerOpen      = false;
+  let _activeToggleBtn = null;
+
+  function openDrawer(toggleBtn) {
+    _drawerOpen = true;
+    _activeToggleBtn = toggleBtn;
+    _drawer.classList.add('open');
+    _backdrop.classList.add('open');
+    toggleBtn.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    populateDrawer();
+  }
+
+  function closeDrawer() {
+    _drawerOpen = false;
+    _drawer.classList.remove('open');
+    _backdrop.classList.remove('open');
+    if (_activeToggleBtn) _activeToggleBtn.classList.remove('open');
+    _activeToggleBtn = null;
+    document.body.style.overflow = '';
+  }
+
+  _closeBtn.addEventListener('click', closeDrawer);
+  _backdrop.addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && _drawerOpen) closeDrawer(); });
+
+  function populateDrawer() {
+    _drawerBody.innerHTML = '<div class="ha-controls-loading">⬡ Loading devices…</div>';
+
+    haFetchStates().then(states => {
+      _drawerBody.innerHTML = '';
+
+      const domainMap = {};
+      for (const domCfg of CONFIG.haDomainsConfig) {
+        domainMap[domCfg.domain] = { cfg: domCfg, entities: [] };
+      }
+
+      for (const state of states) {
+        const domain = state.entity_id.split('.')[0];
+        if (domainMap[domain]) domainMap[domain].entities.push(state);
+      }
+
+      let anyRendered = false;
+
+      for (const domCfg of CONFIG.haDomainsConfig) {
+        const { entities } = domainMap[domCfg.domain];
+        if (!entities.length) continue;
+        anyRendered = true;
+
+        entities.sort((a, b) => {
+          if (haIsOn(a) !== haIsOn(b)) return haIsOn(a) ? -1 : 1;
+          return (a.attributes.friendly_name || a.entity_id)
+            .localeCompare(b.attributes.friendly_name || b.entity_id);
+        });
+
+        const heading = el('div', 'ha-domain-heading');
+        heading.appendChild(el('span', 'ha-domain-icon', domCfg.icon));
+        heading.appendChild(el('span', 'ha-domain-label', domCfg.label));
+        heading.appendChild(el('span', 'ha-domain-count', `${entities.length}`));
+        _drawerBody.appendChild(heading);
+
+        const grid = el('div', 'ha-entity-grid');
+
+        for (const state of entities) {
+          const isOn          = haIsOn(state);
+          const isUnavailable = state.state === 'unavailable' || state.state === 'unknown';
+          const name          = state.attributes.friendly_name || friendlyName(state.entity_id);
+          const value         = domCfg.showValue ? haEntityValue(state) : '';
+
+          const btn = el('button', 'ha-entity-btn');
+          if (isOn) btn.classList.add('on');
+          if (isUnavailable) btn.classList.add('unavailable');
+
+          btn.appendChild(el('span', 'ha-entity-indicator'));
+          btn.appendChild(el('span', 'ha-entity-name', name));
+          if (value) btn.appendChild(el('span', 'ha-entity-value', value));
+          btn.title = `${name} — ${state.state}`;
+
+          if (!isUnavailable) {
+            btn.addEventListener('click', async () => {
+              btn.classList.add('busy');
+              try {
+                await haToggleEntity(state.entity_id);
+                const nowOn = !btn.classList.contains('on');
+                btn.classList.toggle('on', nowOn);
+                btn.classList.remove('busy');
+                btn.title = `${name} — ${nowOn ? 'on' : 'off'}`;
+                setTimeout(populateDrawer, 1500);
+              } catch {
+                btn.classList.remove('busy');
+              }
+            });
+          }
+
+          grid.appendChild(btn);
+        }
+
+        _drawerBody.appendChild(grid);
+      }
+
+      if (!anyRendered) {
+        _drawerBody.innerHTML = '<div class="ha-controls-loading">No controllable devices found.</div>';
+      }
+
+      _lastUpdated.textContent = `Updated ${new Date().toLocaleTimeString('en-US', { hour12: false })}`;
+
+    }).catch(err => {
+      _drawerBody.innerHTML = `<div class="ha-controls-error">Could not reach Home Assistant:<br>${err.message}</div>`;
+    });
+  }
+
+  _refreshBtn.addEventListener('click', populateDrawer);
+
   // ── Card builder ────────────────────────────────────────────
   function buildCard(service) {
+    // Cards with HA controls need a wrapper div
+    if (service.haControls) {
+      return buildHACard(service);
+    }
+
     const card = el("a", "card");
     card.href   = service.url;
     card.target = "_blank";
@@ -682,6 +1197,66 @@
     return { card, dot, service };
   }
 
+  function buildHACard(service) {
+    // HA card is a normal card with an extra toggle button at the bottom
+    const card = el("div", "card");
+
+    const header = el("div", "card-header");
+    const dot    = el("span", "status-dot");
+
+    const titleLink = el("a", "card-name", service.name);
+    titleLink.href   = service.url;
+    titleLink.target = "_blank";
+    titleLink.rel    = "noopener noreferrer";
+    titleLink.style.textDecoration = "none";
+    titleLink.style.color = "inherit";
+
+    header.append(
+      el("span", "card-icon", service.icon || "🏡"),
+      titleLink,
+      dot
+    );
+    card.appendChild(header);
+
+    if (service.description) card.appendChild(el("p", "card-desc", service.description));
+
+    if (service.tags && service.tags.length) {
+      const tagsRow = el("div", "card-tags");
+      service.tags.forEach(t => tagsRow.appendChild(el("span", "tag", t)));
+      card.appendChild(tagsRow);
+    }
+
+    if (service.stats && service.stats.length) {
+      const statsRow = el("div", "card-stats");
+      service.stats.forEach(stat => {
+        const item  = el("div", "stat-item");
+        const valEl = el("div", "stat-value", "…");
+        const lblEl = el("div", "stat-label", stat.label);
+        item.append(valEl, lblEl);
+        statsRow.appendChild(item);
+        registerStat(stat.endpoint, stat.key, valEl, stat.transform);
+      });
+      card.appendChild(statsRow);
+    }
+
+    // Toggle button — opens the drawer
+    const toggleBtn = el("button", "ha-toggle-btn");
+    toggleBtn.innerHTML = 'DEVICE CONTROLS <i class="ha-toggle-arrow">▸</i>';
+    toggleBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (_drawerOpen && _activeToggleBtn === toggleBtn) {
+        closeDrawer();
+      } else {
+        if (_drawerOpen) closeDrawer();
+        openDrawer(toggleBtn);
+      }
+    });
+    card.appendChild(toggleBtn);
+
+    checkStatus(service, dot);
+    return { card, dot, service };
+  }
+
   // ── Render ──────────────────────────────────────────────────
   const allDots = [];
   const container = document.getElementById("groups-container");
@@ -705,18 +1280,10 @@
   });
 
   // ── Polling ─────────────────────────────────────────────────
-
-  // Initial fetch
   fetchStats('fast');
   fetchStats('slow');
-
-  // Fast stats: every 5 seconds
   setInterval(() => fetchStats('fast'), CONFIG.fastInterval);
-
-  // Slow stats: every 60 seconds
   setInterval(() => fetchStats('slow'), CONFIG.slowInterval);
-
-  // Status dots: every 60 seconds
   setInterval(() => {
     allDots.forEach(({ dot, service }) => checkStatus(service, dot));
   }, CONFIG.statusInterval);

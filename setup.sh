@@ -23,7 +23,7 @@ echo ""
 
 # ── Install Python dependencies ──────────────────────────────
 echo "► Installing Python dependencies..."
-$PYTHON -m pip install flask requests routeros-api urllib3 --break-system-packages --quiet
+$PYTHON -m pip install flask requests routeros-api urllib3 paho-mqtt --break-system-packages --quiet
 echo "  ✓ Dependencies installed"
 
 # ── Dashboard service ─────────────────────────────────────────
