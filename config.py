@@ -123,6 +123,34 @@ GRAFANA_ENABLED = False
 
 
 # =============================================================
+#  MEDIA & MESSAGING
+# =============================================================
+ 
+# -------------------------------------------------------------
+#  BLUEBUBBLES  (uncomment BLUEBUBBLES_ENABLED = True to enable)
+#  BlueBubbles relays iMessage from a macOS machine to other devices.
+#  The server runs on port 1234 by default (check your BB server settings).
+#  The password is set in the BlueBubbles Server app under Settings > Password.
+#  No API key needed — all requests use ?password= as a query parameter.
+# -------------------------------------------------------------
+BLUEBUBBLES_ENABLED = False
+# BLUEBUBBLES_HOST    = 'http://192.168.88.XX:1234'   # Your BlueBubbles server IP:port
+# BLUEBUBBLES_PASS    = 'YOUR_BLUEBUBBLES_PASSWORD'
+ 
+ 
+# -------------------------------------------------------------
+#  IMMICH  (uncomment IMMICH_ENABLED = True to enable)
+#  Self-hosted Google Photos alternative. Runs on port 2283 by default.
+#  Generate an API key in Immich: Account Settings > API Keys
+#  The key needs the 'server.statistics' permission, or just use an admin key.
+#  Note: requires Immich v1.118 or newer (uses /api/server/* endpoints).
+# -------------------------------------------------------------
+IMMICH_ENABLED  = False
+# IMMICH_HOST     = 'http://192.168.88.XX:2283'
+# IMMICH_API_KEY  = 'YOUR_IMMICH_API_KEY'
+
+
+# =============================================================
 #  GAME SERVERS
 # =============================================================
 

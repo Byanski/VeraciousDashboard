@@ -367,6 +367,104 @@ def get_grafana_stats():
         return {'grafana_error': str(e)}
 
 
+# ─── BlueBubbles ─────────────────────────────────────────────────────────────
+# BlueBubbles is a macOS iMessage relay server. Auth uses ?password= query param.
+# Exposes /api/v1/server/info and /api/v1/chat/query for useful dashboard stats.
+
+def get_bluebubbles_stats():
+    if not getattr(cfg, 'BLUEBUBBLES_ENABLED', False):
+        return {}
+    try:
+        base     = cfg.BLUEBUBBLES_HOST.rstrip('/')
+        password = cfg.BLUEBUBBLES_PASS
+        params   = {'password': password}
+
+        # Server info — uptime, Private API status, connected devices
+        info_res = requests.get(
+            f'{base}/api/v1/server/info',
+            params=params,
+            timeout=5
+        )
+        info_res.raise_for_status()
+        info = info_res.json().get('data', {})
+
+        private_api = info.get('is_using_private_api', False)
+        imessage_connected = info.get('detected_icloud', False)
+
+        # Total chat count
+        chat_res = requests.post(
+            f'{base}/api/v1/chat/query',
+            params=params,
+            json={'limit': 1, 'offset': 0},
+            timeout=5
+        )
+        chat_res.raise_for_status()
+        chat_data  = chat_res.json()
+        chat_count = chat_data.get('metadata', {}).get('total', 0)
+
+        # Message count for today (messages in last 24h)
+        import time as _time
+        since_ms = int((_time.time() - 86400) * 1000)
+        msg_res = requests.post(
+            f'{base}/api/v1/message/query',
+            params=params,
+            json={'limit': 1, 'offset': 0, 'after': since_ms},
+            timeout=5
+        )
+        msg_24h = 0
+        if msg_res.ok:
+            msg_24h = msg_res.json().get('metadata', {}).get('total', 0)
+
+        return {
+            'bluebubbles_chats':        chat_count,
+            'bluebubbles_msgs_24h':     msg_24h,
+            'bluebubbles_private_api':  'Yes' if private_api else 'No',
+            'bluebubbles_imessage':     'Yes' if imessage_connected else 'No',
+        }
+    except Exception as e:
+        return {'bluebubbles_error': str(e)}
+
+
+# ─── Immich ───────────────────────────────────────────────────────────────────
+# Self-hosted Google Photos alternative. Auth via x-api-key header.
+# Uses the modern /api/server/statistics endpoint (v1.118+).
+# API key needs the server.statistics permission (or admin key).
+
+def get_immich_stats():
+    if not getattr(cfg, 'IMMICH_ENABLED', False):
+        return {}
+    try:
+        headers = {
+            'x-api-key': cfg.IMMICH_API_KEY,
+            'Accept':    'application/json',
+        }
+        base = cfg.IMMICH_HOST.rstrip('/')
+
+        # Server-wide statistics (photos, videos, usage)
+        stats_res = requests.get(
+            f'{base}/api/server/statistics',
+            headers=headers,
+            timeout=5
+        )
+        stats_res.raise_for_status()
+        stats = stats_res.json()
+
+        photos = stats.get('photos', 0)
+        videos = stats.get('videos', 0)
+        usage_bytes = stats.get('usage', 0)
+        # Convert bytes to GB, rounded to 1 decimal
+        usage_gb = round(usage_bytes / (1024 ** 3), 1) if usage_bytes else 0
+
+        return {
+            'immich_photos': photos,
+            'immich_videos': videos,
+            'immich_usage_gb': usage_gb,
+            'immich_total_assets': photos + videos,
+        }
+    except Exception as e:
+        return {'immich_error': str(e)}
+
+
 # ─── AMP (CubeCoders) ────────────────────────────────────────────────────────
 
 def get_amp_stats():
@@ -725,6 +823,9 @@ def update_slow_cache():
         data.update(get_ollama_stats())
         data.update(get_openwebui_stats())
         data.update(get_grafana_stats())
+        # Media & messaging
+        data.update(get_bluebubbles_stats())
+        data.update(get_immich_stats())
         # Game servers
         data.update(get_amp_stats())
         # 3D printers
@@ -866,6 +967,8 @@ if __name__ == '__main__':
                get_unifi_stats, get_plex_stats, get_ha_stats,
                get_portainer_stats, get_ollama_stats, get_openwebui_stats,
                get_grafana_stats,
+               # Media & messaging
+               get_bluebubbles_stats, get_immich_stats,
                # Game servers
                get_amp_stats,
                # 3D printers

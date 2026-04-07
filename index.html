@@ -141,6 +141,241 @@
     .pill-online  { background: rgba(0,255,136,0.1); color: var(--online);  border: 1px solid rgba(0,255,136,0.3); }
     .pill-offline { background: rgba(255,56,96,0.1);  color: var(--offline); border: 1px solid rgba(255,56,96,0.3); }
 
+    /* ── Quick Links Bar ──────────────────────────────────────── */
+
+    .quicklinks-bar {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 40px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(0,0,0,0.2);
+      flex-wrap: wrap;
+      min-height: 52px;
+    }
+
+    .quicklinks-label {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-right: 4px;
+      flex-shrink: 0;
+    }
+
+    .quicklink {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 12px 5px 8px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      text-decoration: none;
+      color: var(--text-dim);
+      font-size: 0.78rem;
+      font-family: var(--font-ui);
+      transition: background 0.18s, border-color 0.18s, color 0.18s, transform 0.12s, box-shadow 0.18s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .quicklink:hover {
+      background: var(--bg3);
+      border-color: var(--border-hi);
+      color: var(--text);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.35), 0 0 10px var(--accent-glow);
+    }
+
+    .quicklink img {
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+      object-fit: contain;
+      flex-shrink: 0;
+      background: transparent;
+    }
+
+    .quicklink-fallback {
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      flex-shrink: 0;
+      font-family: var(--font-mono);
+    }
+
+    .ql-add-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 10px;
+      background: none;
+      border: 1px dashed var(--border);
+      border-radius: 100px;
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      letter-spacing: 0.06em;
+      transition: border-color 0.18s, color 0.18s, background 0.18s;
+      flex-shrink: 0;
+    }
+
+    .ql-add-btn:hover {
+      border-color: var(--accent2);
+      color: var(--accent2);
+      background: rgba(0,229,255,0.04);
+    }
+
+    /* Modal */
+    .ql-modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      z-index: 200;
+      backdrop-filter: blur(3px);
+      animation: fadeInBack 0.15s ease;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ql-modal-backdrop.open { display: flex; }
+
+    .ql-modal {
+      background: var(--bg2);
+      border: 1px solid var(--border-hi);
+      border-radius: 10px;
+      padding: 28px 28px 24px;
+      width: 360px;
+      max-width: 92vw;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.6), 0 0 40px rgba(0,229,255,0.06);
+      animation: modalIn 0.2s cubic-bezier(0.34,1.56,0.64,1);
+    }
+
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.92) translateY(8px); }
+      to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .ql-modal h3 {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 20px;
+    }
+
+    .ql-field { margin-bottom: 14px; }
+
+    .ql-field label {
+      display: block;
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    .ql-field input {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 8px 12px;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      outline: none;
+      transition: border-color 0.18s;
+    }
+
+    .ql-field input:focus { border-color: var(--accent2); }
+    .ql-field input::placeholder { color: var(--text-muted); }
+
+    .ql-modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      justify-content: flex-end;
+    }
+
+    .ql-btn {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      padding: 7px 18px;
+      border-radius: 5px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.18s, border-color 0.18s, color 0.18s;
+    }
+
+    .ql-btn-cancel {
+      background: none;
+      color: var(--text-dim);
+    }
+
+    .ql-btn-cancel:hover {
+      background: var(--bg3);
+      border-color: var(--border-hi);
+      color: var(--text);
+    }
+
+    .ql-btn-save {
+      background: rgba(0,229,255,0.1);
+      border-color: rgba(0,229,255,0.3);
+      color: var(--accent);
+    }
+
+    .ql-btn-save:hover {
+      background: rgba(0,229,255,0.18);
+      border-color: rgba(0,229,255,0.55);
+    }
+
+    .ql-remove-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: rgba(255,56,96,0.0);
+      border: none;
+      color: transparent;
+      font-size: 0.6rem;
+      cursor: pointer;
+      margin-left: 2px;
+      transition: background 0.15s, color 0.15s;
+      line-height: 1;
+      padding: 0;
+      flex-shrink: 0;
+    }
+
+    .quicklink:hover .ql-remove-btn {
+      background: rgba(255,56,96,0.15);
+      color: var(--offline);
+    }
+
+    .ql-remove-btn:hover {
+      background: rgba(255,56,96,0.3) !important;
+    }
+
+    /* end quick links */
+
     main {
       position: relative;
       z-index: 1;
@@ -156,6 +391,9 @@
     .group:nth-child(4) { animation-delay: 0.20s; }
     .group:nth-child(5) { animation-delay: 0.25s; }
     .group:nth-child(6) { animation-delay: 0.30s; }
+    .group:nth-child(7) { animation-delay: 0.35s; }
+    .group:nth-child(8) { animation-delay: 0.40s; }
+    .group:nth-child(9) { animation-delay: 0.45s; }
 
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(12px); }
@@ -315,6 +553,7 @@
       .header-right { width: 100%; justify-content: space-between; }
       main { padding: 24px 20px 40px; }
       .card-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+      .quicklinks-bar { padding: 10px 20px; }
     }
 
     /* ── HA Toggle button (lives inside the normal card) ─────── */
@@ -653,6 +892,32 @@
     </div>
   </header>
 
+  <!-- ── Quick Links Bar ──────────────────────────────────────── -->
+  <div class="quicklinks-bar" id="quicklinks-bar">
+    <span class="quicklinks-label">Quick Links</span>
+    <div id="quicklinks-list" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;"></div>
+    <button class="ql-add-btn" id="ql-add-btn" title="Add a quick link">+ Add</button>
+  </div>
+
+  <!-- Quick Link Add Modal -->
+  <div class="ql-modal-backdrop" id="ql-modal-backdrop">
+    <div class="ql-modal">
+      <h3>⬡ Add Quick Link</h3>
+      <div class="ql-field">
+        <label>URL</label>
+        <input type="url" id="ql-url-input" placeholder="https://example.com" autocomplete="off" />
+      </div>
+      <div class="ql-field">
+        <label>Label (optional)</label>
+        <input type="text" id="ql-label-input" placeholder="Auto-detected from URL" autocomplete="off" />
+      </div>
+      <div class="ql-modal-actions">
+        <button class="ql-btn ql-btn-cancel" id="ql-cancel-btn">Cancel</button>
+        <button class="ql-btn ql-btn-save"   id="ql-save-btn">Add Link</button>
+      </div>
+    </div>
+  </div>
+
   <!-- HA Controls Flyout -->
   <div class="ha-backdrop" id="ha-backdrop"></div>
   <div class="ha-drawer"   id="ha-drawer">
@@ -689,6 +954,11 @@
      HOME ASSISTANT CONTROLS:
        Add  haControls: true  to any service entry to enable the
        inline device control panel. Also set haUrl and haToken.
+
+     QUICK LINKS:
+       Links are saved automatically to localStorage. Use the
+       "+ Add" button in the bar above to add your most visited
+       sites. Favicons are fetched automatically.
   ============================================================ */
   const CONFIG = {
 
@@ -762,8 +1032,127 @@
               { key: "mikrotik_devices", label: "Total devices", endpoint: "fast" },
             ],
           },
+
+          // ── UniFi (uncomment when UNIFI_ENABLED = True in config.py) ──
+          /*
+          {
+            name:        "UniFi Controller",
+            url:         "https://192.168.88.XX:8443",
+            icon:        "📶",
+            description: "UniFi network controller",
+            tags:        ["network", "wifi"],
+            checkUrl:    "https://192.168.88.XX:8443",
+            stats: [
+              { key: "unifi_clients", label: "Clients", endpoint: "slow" },
+            ],
+          },
+          */
         ],
       },
+
+      /* ── Virtualization & Containers ──────────────────────── */
+      // Uncomment this group when Proxmox / Portainer / TrueNAS are enabled
+      /*
+      {
+        name: "Virtualization & Containers",
+        icon: "🖥️",
+        services: [
+
+          // ── Proxmox (uncomment when PROXMOX_ENABLED = True in config.py) ──
+          {
+            name:        "Proxmox",
+            url:         "https://192.168.88.XX:8006",
+            icon:        "🖥️",
+            description: "Proxmox hypervisor",
+            tags:        ["vm", "hypervisor"],
+            checkUrl:    "https://192.168.88.XX:8006",
+            stats: [
+              { key: "proxmox_cpu_pct", label: "CPU", endpoint: "slow", transform: "v => v + '%'" },
+              { key: "proxmox_mem_pct", label: "RAM", endpoint: "slow", transform: "v => v + '%'" },
+              { key: "proxmox_vms",     label: "VMs", endpoint: "slow" },
+            ],
+          },
+
+          // ── Portainer (uncomment when PORTAINER_ENABLED = True in config.py) ──
+          {
+            name:        "Portainer",
+            url:         "http://192.168.88.XX:9000",
+            icon:        "🐳",
+            description: "Docker container manager",
+            tags:        ["docker", "containers"],
+            checkUrl:    "http://192.168.88.XX:9000",
+            stats: [
+              { key: "portainer_running", label: "Running", endpoint: "slow" },
+              { key: "portainer_total",   label: "Total",   endpoint: "slow" },
+            ],
+          },
+
+          // ── Unraid (uncomment when UNRAID_ENABLED = True in config.py) ──
+          {
+            name:        "Unraid",
+            url:         "http://192.168.88.XX",
+            icon:        "🗃️",
+            description: "Unraid server",
+            tags:        ["server", "storage"],
+            checkUrl:    "http://192.168.88.XX",
+            stats: [],
+          },
+
+        ],
+      },
+      */
+
+      /* ── Storage ──────────────────────────────────────────── */
+      // Uncomment when TrueNAS is enabled
+      /*
+      {
+        name: "Storage",
+        icon: "◻",
+        services: [
+
+          // ── TrueNAS (uncomment when TRUENAS_ENABLED = True in config.py) ──
+          {
+            name:        "TrueNAS",
+            url:         "http://192.168.88.XX",
+            icon:        "🗄️",
+            description: "NAS / ZFS storage",
+            tags:        ["storage", "nas"],
+            checkUrl:    "http://192.168.88.XX",
+            stats: [
+              { key: "truenas_pools",   label: "Pools",   endpoint: "slow" },
+              { key: "truenas_healthy", label: "Healthy", endpoint: "slow" },
+              { key: "truenas_disks",   label: "Disks",   endpoint: "slow" },
+            ],
+          },
+
+        ],
+      },
+      */
+
+      /* ── Monitoring ───────────────────────────────────────── */
+      // Uncomment when Grafana is enabled
+      /*
+      {
+        name: "Monitoring",
+        icon: "◈",
+        services: [
+
+          // ── Grafana (uncomment when GRAFANA_ENABLED = True in config.py) ──
+          {
+            name:        "Grafana",
+            url:         "http://192.168.88.XX:3000",
+            icon:        "📊",
+            description: "Metrics & dashboards",
+            tags:        ["monitoring", "metrics"],
+            checkUrl:    "http://192.168.88.XX:3000",
+            stats: [
+              { key: "grafana_dashboards", label: "Dashboards", endpoint: "slow" },
+            ],
+          },
+
+        ],
+      },
+      */
 
       /* ── Media ────────────────────────────────────────────── */
       {
@@ -781,6 +1170,32 @@
             //   { key: "plex_streams", label: "Streams", endpoint: "slow" },
             // ],
           },
+
+          // ── Immich (uncomment when IMMICH_ENABLED = True in config.py) ──
+          /*
+          {
+            name:        "Immich",
+            url:         "http://192.168.88.XX:2283",
+            icon:        "📷",
+            description: "Self-hosted photo library",
+            tags:        ["photos", "media"],
+            checkUrl:    "http://192.168.88.XX:2283",
+            stats: [],
+          },
+          */
+
+          // ── BlueBubbles (uncomment when BLUEBUBBLES_ENABLED = True in config.py) ──
+          /*
+          {
+            name:        "BlueBubbles",
+            url:         "http://192.168.88.XX:1234",
+            icon:        "💬",
+            description: "iMessage relay server",
+            tags:        ["messaging"],
+            checkUrl:    "http://192.168.88.XX:1234",
+            stats: [],
+          },
+          */
         ],
       },
 
@@ -821,59 +1236,126 @@
               { key: "openwebui_models", label: "Models", endpoint: "slow" },
             ],
           },
+
+          // ── Ollama (shown separately if desired; uses same host as Open WebUI) ──
+          /*
+          {
+            name:        "Ollama",
+            url:         "http://192.168.88.236:11434",
+            icon:        "🦙",
+            description: "Local LLM runtime",
+            tags:        ["ai", "llm"],
+            checkUrl:    "http://192.168.88.236:11434",
+            stats: [
+              { key: "ollama_models", label: "Loaded", endpoint: "slow" },
+            ],
+          },
+          */
         ],
       },
 
-      /* ── ADD MORE GROUPS HERE ─────────────────────────────── */
+      /* ── Gaming ───────────────────────────────────────────── */
+      // Uncomment when AMP_ENABLED = True in config.py
       /*
       {
-        name: "Monitoring",
-        icon: "◈",
+        name: "Gaming",
+        icon: "🎮",
         services: [
+
+          // ── AMP (uncomment when AMP_ENABLED = True in config.py) ──
           {
-            name:        "Portainer",
-            url:         "http://192.168.88.XX:9000",
-            icon:        "🐳",
-            description: "Docker container manager",
-            tags:        ["docker"],
-            checkUrl:    "http://192.168.88.XX:9000",
+            name:        "AMP",
+            url:         "http://192.168.88.XX:8080",
+            icon:        "🎮",
+            description: "Game server manager",
+            tags:        ["gaming"],
+            checkUrl:    "http://192.168.88.XX:8080",
             stats: [
-              { key: "portainer_running", label: "Running", endpoint: "slow" },
-              { key: "portainer_total",   label: "Total",   endpoint: "slow" },
+              { key: "amp_instances_running", label: "Running",  endpoint: "slow" },
+              { key: "amp_players",           label: "Players",  endpoint: "slow" },
+              { key: "amp_cpu_pct",           label: "Avg CPU",  endpoint: "slow", transform: "v => v + '%'" },
+              { key: "amp_ram_pct",           label: "Avg RAM",  endpoint: "slow", transform: "v => v + '%'" },
             ],
           },
-          {
-            name:        "Proxmox",
-            url:         "https://192.168.88.XX:8006",
-            icon:        "🖥️",
-            description: "Hypervisor",
-            tags:        ["vm"],
-            checkUrl:    "https://192.168.88.XX:8006",
-            stats: [
-              { key: "proxmox_cpu_pct", label: "CPU", endpoint: "slow", transform: "v => v + '%'" },
-              { key: "proxmox_mem_pct", label: "RAM", endpoint: "slow", transform: "v => v + '%'" },
-              { key: "proxmox_vms",     label: "VMs", endpoint: "slow" },
-            ],
-          },
+
         ],
       },
+      */
+
+      /* ── 3D Printing ──────────────────────────────────────── */
+      // Uncomment whichever printer integrations you use
+      /*
       {
-        name: "Storage",
-        icon: "◻",
+        name: "3D Printing",
+        icon: "🖨️",
         services: [
+
+          // ── OctoPrint (uncomment when OCTOPRINT_ENABLED = True in config.py) ──
+          // Replace "printer_1" with your printer name (lowercased, spaces→underscores)
           {
-            name:        "TrueNAS",
+            name:        "OctoPrint",
             url:         "http://192.168.88.XX",
-            icon:        "🗄️",
-            description: "NAS / ZFS storage",
-            tags:        ["storage"],
+            icon:        "🖨️",
+            description: "FDM printer control",
+            tags:        ["printing"],
             checkUrl:    "http://192.168.88.XX",
             stats: [
-              { key: "truenas_pools",   label: "Pools",   endpoint: "slow" },
-              { key: "truenas_healthy", label: "Healthy", endpoint: "slow" },
-              { key: "truenas_disks",   label: "Disks",   endpoint: "slow" },
+              { key: "octoprint_printer_1_state",    label: "State",    endpoint: "slow" },
+              { key: "octoprint_printer_1_progress", label: "Progress", endpoint: "slow", transform: "v => v + '%'" },
+              { key: "octoprint_printer_1_bed_temp", label: "Bed",      endpoint: "slow", transform: "v => v + '°'" },
+              { key: "octoprint_printer_1_hotend_temp", label: "Hotend", endpoint: "slow", transform: "v => v + '°'" },
             ],
           },
+
+          // ── Moonraker / Klipper (uncomment when MOONRAKER_ENABLED = True in config.py) ──
+          // Replace "voron" with your printer name (lowercased)
+          {
+            name:        "Klipper / Moonraker",
+            url:         "http://192.168.88.XX:7125",
+            icon:        "🖨️",
+            description: "Klipper printer",
+            tags:        ["printing"],
+            checkUrl:    "http://192.168.88.XX:7125",
+            stats: [
+              { key: "moonraker_voron_state",         label: "State",    endpoint: "slow" },
+              { key: "moonraker_voron_progress",      label: "Progress", endpoint: "slow", transform: "v => v + '%'" },
+              { key: "moonraker_voron_extruder_temp", label: "Hotend",   endpoint: "slow", transform: "v => v + '°'" },
+              { key: "moonraker_voron_bed_temp",      label: "Bed",      endpoint: "slow", transform: "v => v + '°'" },
+            ],
+          },
+
+          // ── Bambu Lab (uncomment when BAMBU_ENABLED = True in config.py) ──
+          // Replace "x1_carbon" with your printer name (lowercased, spaces→underscores)
+          {
+            name:        "Bambu Lab",
+            url:         "http://192.168.88.XX",
+            icon:        "🖨️",
+            description: "Bambu Lab printer (LAN mode)",
+            tags:        ["printing"],
+            checkUrl:    "http://192.168.88.XX",
+            stats: [
+              { key: "bambu_x1_carbon_state",        label: "State",    endpoint: "slow" },
+              { key: "bambu_x1_carbon_progress",     label: "Progress", endpoint: "slow", transform: "v => v + '%'" },
+              { key: "bambu_x1_carbon_layer",        label: "Layer",    endpoint: "slow" },
+              { key: "bambu_x1_carbon_total_layers", label: "Total",    endpoint: "slow" },
+            ],
+          },
+
+          // ── Obico / Spaghetti Detective (uncomment when OBICO_ENABLED = True in config.py) ──
+          // Replace "my_printer" with your printer name (lowercased)
+          {
+            name:        "Obico",
+            url:         "https://app.obico.io",
+            icon:        "👁️",
+            description: "AI print failure detection",
+            tags:        ["printing", "monitoring"],
+            checkUrl:    "https://app.obico.io",
+            stats: [
+              { key: "obico_active", label: "Active", endpoint: "slow" },
+              { key: "obico_total",  label: "Total",  endpoint: "slow" },
+            ],
+          },
+
         ],
       },
       */
@@ -898,6 +1380,136 @@
 
   document.getElementById("fast-interval").textContent = CONFIG.fastInterval / 1000;
   document.getElementById("slow-interval").textContent = CONFIG.slowInterval / 1000;
+
+  // ── Quick Links ─────────────────────────────────────────────
+  const QL_KEY = 'veracious_quicklinks';
+
+  function qlLoad() {
+    try { return JSON.parse(localStorage.getItem(QL_KEY) || '[]'); } catch { return []; }
+  }
+
+  function qlSave(links) {
+    localStorage.setItem(QL_KEY, JSON.stringify(links));
+  }
+
+  function qlHostname(url) {
+    try { return new URL(url).hostname; } catch { return url; }
+  }
+
+  function qlLabel(url, customLabel) {
+    if (customLabel && customLabel.trim()) return customLabel.trim();
+    try {
+      const host = new URL(url).hostname;
+      return host.replace(/^www\./, '').split('.')[0];
+    } catch { return url; }
+  }
+
+  function qlFaviconUrl(url) {
+    // Try Google's favicon service as a reliable cross-origin source
+    try {
+      const origin = new URL(url).origin;
+      return `https://www.google.com/s2/favicons?sz=32&domain_url=${encodeURIComponent(origin)}`;
+    } catch { return null; }
+  }
+
+  function qlRender() {
+    const links = qlLoad();
+    const list  = document.getElementById('quicklinks-list');
+    list.innerHTML = '';
+
+    links.forEach((link, idx) => {
+      const a = document.createElement('a');
+      a.className = 'quicklink';
+      a.href      = link.url;
+      a.target    = '_blank';
+      a.rel       = 'noopener noreferrer';
+      a.title     = link.url;
+
+      const faviconUrl = qlFaviconUrl(link.url);
+      if (faviconUrl) {
+        const img = document.createElement('img');
+        img.src = faviconUrl;
+        img.alt = '';
+        img.onerror = function() {
+          // Replace with letter fallback on load failure
+          const fb = document.createElement('span');
+          fb.className = 'quicklink-fallback';
+          fb.textContent = (link.label || 'X')[0].toUpperCase();
+          this.parentNode.replaceChild(fb, this);
+        };
+        a.appendChild(img);
+      } else {
+        const fb = document.createElement('span');
+        fb.className = 'quicklink-fallback';
+        fb.textContent = (link.label || 'X')[0].toUpperCase();
+        a.appendChild(fb);
+      }
+
+      const labelSpan = document.createElement('span');
+      labelSpan.textContent = link.label;
+      a.appendChild(labelSpan);
+
+      // Remove button (shown on hover via CSS)
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'ql-remove-btn';
+      removeBtn.textContent = '✕';
+      removeBtn.title = 'Remove';
+      removeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const links2 = qlLoad();
+        links2.splice(idx, 1);
+        qlSave(links2);
+        qlRender();
+      });
+      a.appendChild(removeBtn);
+
+      list.appendChild(a);
+    });
+  }
+
+  // Modal logic
+  const qlBackdrop  = document.getElementById('ql-modal-backdrop');
+  const qlUrlInput  = document.getElementById('ql-url-input');
+  const qlLblInput  = document.getElementById('ql-label-input');
+  const qlAddBtn    = document.getElementById('ql-add-btn');
+  const qlCancelBtn = document.getElementById('ql-cancel-btn');
+  const qlSaveBtn   = document.getElementById('ql-save-btn');
+
+  function qlOpenModal() {
+    qlUrlInput.value = '';
+    qlLblInput.value = '';
+    qlBackdrop.classList.add('open');
+    setTimeout(() => qlUrlInput.focus(), 80);
+  }
+
+  function qlCloseModal() {
+    qlBackdrop.classList.remove('open');
+  }
+
+  function qlCommit() {
+    let url = qlUrlInput.value.trim();
+    if (!url) return;
+    // Auto-prefix https:// if no scheme given
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+    const label = qlLabel(url, qlLblInput.value);
+    const links = qlLoad();
+    links.push({ url, label });
+    qlSave(links);
+    qlRender();
+    qlCloseModal();
+  }
+
+  qlAddBtn.addEventListener('click', qlOpenModal);
+  qlCancelBtn.addEventListener('click', qlCloseModal);
+  qlSaveBtn.addEventListener('click', qlCommit);
+  qlBackdrop.addEventListener('click', (e) => { if (e.target === qlBackdrop) qlCloseModal(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && qlBackdrop.classList.contains('open')) qlCloseModal();
+    if (e.key === 'Enter'  && qlBackdrop.classList.contains('open')) qlCommit();
+  });
+
+  qlRender();
 
   // ── Stat cache ─────────────────────────────────────────────
   const _statCache = { fast: {}, slow: {} };
